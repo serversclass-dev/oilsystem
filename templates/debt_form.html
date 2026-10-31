@@ -1,0 +1,280 @@
+{% extends 'base.html' %}
+
+{% block title %}دين جديد — {{ settings_get('shop_name','RUN X') }}{% endblock %}
+
+{% block extra_head %}
+<style>
+.form-layout {
+  display: grid;
+  grid-template-columns: minmax(0,1.5fr) minmax(0,.6fr);
+  gap: 18px;
+  align-items: start;
+}
+@media (max-width: 900px) { .form-layout { grid-template-columns: 1fr; } }
+
+.section-title {
+  font-family: var(--display);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line-light);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.section-title svg {
+  width: 16px; height: 16px;
+  fill: none; stroke: var(--signal);
+  stroke-linecap: round; stroke-width: 2;
+}
+
+.amount-preview {
+  background: rgba(199,61,61,.07);
+  border: 1px solid rgba(199,61,61,.2);
+  border-radius: var(--r3);
+  padding: 16px 20px;
+  text-align: center;
+  margin-top: 4px;
+}
+.amount-preview-label { font-size: .65rem; color: var(--muted); margin-bottom: 4px; }
+.amount-preview-value {
+  font-family: var(--display);
+  font-size: 2.4rem;
+  font-weight: 800;
+  color: var(--danger);
+  letter-spacing: -.04em;
+  line-height: 1;
+}
+.amount-preview-currency { font-size: .75rem; color: var(--muted); margin-top: 4px; }
+
+.tip-card {
+  background: rgba(68,120,255,.06);
+  border: 1px solid rgba(68,120,255,.18);
+  border-radius: var(--r3);
+  padding: 14px 16px;
+  font-size: .75rem;
+  color: var(--muted);
+  line-height: 1.65;
+}
+.tip-card strong { color: var(--instrument); display: block; margin-bottom: 5px; font-size: .78rem; }
+</style>
+{% endblock %}
+
+{% block topbar_pre %}الديون{% endblock %}
+{% block topbar_title %}
+  {% if debt %}تعديل دين{% else %}دين جديد{% endif %}
+{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('debts_list') }}" class="btn btn-secondary">
+  <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+  الديون
+</a>
+{% endblock %}
+
+{% block content %}
+<form method="POST"
+      action="{% if debt %}{{ url_for('debts_new') }}{% else %}{{ url_for('debts_new') }}{% endif %}"
+      id="debt-form">
+
+  <div class="form-layout">
+
+    <!-- LEFT: main form -->
+    <div style="display:flex;flex-direction:column;gap:18px">
+
+      <!-- Customer info -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">معلومات الزبون</span>
+        </div>
+        <div class="panel-body" style="display:grid;gap:14px">
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="customer_name">
+                اسم الزبون <span style="color:var(--danger)">*</span>
+              </label>
+              <input
+                class="form-control"
+                type="text"
+                id="customer_name"
+                name="customer_name"
+                value="{{ debt.customer_name if debt else '' }}"
+                placeholder="أدخل اسم الزبون…"
+                required
+                autofocus
+              />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="customer_phone">رقم الهاتف</label>
+              <input
+                class="form-control"
+                type="tel"
+                id="customer_phone"
+                name="customer_phone"
+                value="{{ debt.customer_phone if debt else '' }}"
+                placeholder="اختياري…"
+                dir="ltr"
+              />
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Debt details -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">تفاصيل الدين</span>
+        </div>
+        <div class="panel-body" style="display:grid;gap:14px">
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="total_amount">
+                مبلغ الدين ({{ currency }}) <span style="color:var(--danger)">*</span>
+              </label>
+              <input
+                class="form-control"
+                type="number"
+                id="total_amount"
+                name="total_amount"
+                step="0.01"
+                min="0.01"
+                value="{{ '%.2f'|format(debt.total_amount) if debt else '' }}"
+                placeholder="0.00"
+                required
+                oninput="updatePreview(this.value)"
+                dir="ltr"
+              />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="due_date">تاريخ الاستحقاق</label>
+              <input
+                class="form-control"
+                type="date"
+                id="due_date"
+                name="due_date"
+                value="{{ debt.due_date.strftime('%Y-%m-%d') if debt and debt.due_date else '' }}"
+              />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="description">وصف الدين / السبب</label>
+            <textarea
+              class="form-control"
+              id="description"
+              name="description"
+              rows="2"
+              placeholder="مثال: بضاعة آجلة، تغيير زيت، خدمات صيانة…"
+            >{{ debt.description if debt else '' }}</textarea>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="notes">ملاحظات إضافية</label>
+            <textarea
+              class="form-control"
+              id="notes"
+              name="notes"
+              rows="2"
+              placeholder="أي ملاحظات تخص هذا الدين…"
+            >{{ debt.notes if debt else '' }}</textarea>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT: sidebar -->
+    <div style="display:flex;flex-direction:column;gap:14px">
+
+      <!-- Amount preview -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">ملخص</span>
+        </div>
+        <div class="panel-body">
+          <div class="amount-preview">
+            <div class="amount-preview-label">مبلغ الدين</div>
+            <div class="amount-preview-value" id="preview-amount">
+              {{ '%.2f'|format(debt.total_amount) if debt else '0.00' }}
+            </div>
+            <div class="amount-preview-currency">{{ currency }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tip card -->
+      <div class="tip-card">
+        <strong>💡 ملاحظة</strong>
+        بعد تسجيل الدين يمكنك إضافة دفعات جزئية من صفحة تفاصيل الدين وطباعة سند الدين في أي وقت.
+      </div>
+
+      <!-- Date info -->
+      <div class="panel">
+        <div class="panel-body" style="display:grid;gap:10px">
+          <div class="form-group">
+            <label class="form-label">تاريخ اليوم</label>
+            <input class="form-control" type="text"
+                   value="{{ today.strftime('%Y/%m/%d') }}" readonly
+                   style="background:rgba(242,240,234,.6);color:var(--muted)"/>
+          </div>
+        </div>
+      </div>
+
+      <!-- Submit -->
+      <div class="panel">
+        <div class="panel-body" style="display:flex;flex-direction:column;gap:8px">
+          <button class="btn btn-primary btn-lg" type="submit" style="justify-content:center">
+            <svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v14a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            {% if debt %}حفظ التعديلات{% else %}تسجيل الدين{% endif %}
+          </button>
+
+          <button class="btn btn-secondary" type="submit" name="print_after" value="1"
+                  style="justify-content:center">
+            <svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+            تسجيل وطباعة السند
+          </button>
+
+          <a href="{{ url_for('debts_list') }}"
+             class="btn btn-ghost" style="justify-content:center">
+            إلغاء
+          </a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function updatePreview(val) {
+  var n = parseFloat(val);
+  document.getElementById('preview-amount').textContent =
+    isNaN(n) ? '0.00' : n.toFixed(2);
+}
+
+// Handle "تسجيل وطباعة السند" — redirect to print after save
+document.getElementById('debt-form').addEventListener('submit', function(e) {
+  var btn = document.activeElement;
+  if (btn && btn.name === 'print_after') {
+    // We'll handle the redirect server-side via the form action
+    // For now, mark with a hidden field
+    var inp = document.createElement('input');
+    inp.type = 'hidden';
+    inp.name = 'print_after';
+    inp.value = '1';
+    this.appendChild(inp);
+  }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>سند دين — {{ debt.customer_name }}</title>
+<style>
+:root{
+  --ink:#000;--paper:#fff;--page:#e6e7e3;--header-fill:#e8e8e4;--line:#222;
+  --arabic:Tahoma,Arial,sans-serif;--numbers:Arial,Tahoma,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{color-scheme:light;}
+body{margin:0;padding:16px 12px 32px;background:var(--page);color:var(--ink);font-family:var(--arabic);font-size:16px;font-weight:700;line-height:1.6;}
+.toolbar{width:210mm;max-width:100%;margin:0 auto 12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;}
+.toolbar-title{font-size:17px;font-weight:700;}
+.toolbar-actions{display:flex;gap:8px;}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:8px 20px;border:2px solid #111;border-radius:4px;background:#111;color:#fff;font-family:var(--arabic);font-size:15px;font-weight:700;cursor:pointer;}
+.btn:hover{background:#333;}
+.btn-sec{background:transparent;color:#000;}
+.btn-sec:hover{background:#d7dacf;}
+.invoice{display:flex;flex-direction:column;width:210mm;max-width:100%;min-height:297mm;margin:0 auto;padding:6mm;background:var(--paper);color:#000;box-shadow:0 8px 32px rgba(0,0,0,.12);}
+.invoice>*{flex-shrink:0;}
+.num{direction:ltr;unicode-bidi:isolate;font-family:var(--numbers);font-variant-numeric:tabular-nums;font-weight:700;}
+/* HEADER */
+.company-header{display:grid;grid-template-columns:minmax(0,1fr) 180px;align-items:center;gap:16px;padding-bottom:14px;border-bottom:3px solid #000;}
+.company-name{font-size:26px;font-weight:700;line-height:1.3;}
+.company-tagline{margin-top:4px;font-size:15px;font-weight:700;line-height:1.5;}
+.company-en{margin-top:5px;font-family:var(--numbers);font-size:11px;font-weight:700;letter-spacing:.5px;}
+.brand{text-align:left;font-family:var(--numbers);}
+.brand strong{display:block;font-size:22px;font-weight:700;line-height:1.2;}
+.brand span{display:block;margin-top:6px;font-size:11px;font-weight:700;}
+.brand-line{width:56px;height:4px;margin:10px 0 0 auto;background:#000;}
+/* IDENTITY */
+.identity{display:grid;grid-template-columns:1fr 1fr 1fr;margin-top:10px;border:2px solid #000;}
+.id-cell{min-width:0;padding:9px 10px;}
+.id-cell+.id-cell{border-inline-start:1px solid #222;}
+.lbl{display:block;margin-bottom:3px;font-size:13px;font-weight:700;}
+.id-heading{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;}
+.id-heading h1{margin:0;font-size:22px;font-weight:700;line-height:1.5;}
+.id-heading p{margin:5px 0 0;font-family:var(--numbers);font-size:12px;font-weight:700;letter-spacing:1px;}
+.id-val{font-size:15px;font-weight:700;}
+.stamp{display:inline-block;margin-top:6px;border:2px solid #000;padding:2px 10px;font-size:13px;font-weight:700;letter-spacing:.5px;}
+/* CUSTOMER */
+.customer{display:grid;grid-template-columns:1.4fr 1fr 1fr;margin-top:10px;border:2px solid #000;}
+.cust-cell{min-width:0;padding:9px 10px;}
+.cust-cell+.cust-cell{border-inline-start:1px solid #222;}
+.cust-val{font-size:15px;font-weight:700;line-height:1.7;}
+/* DESC */
+.desc-box{margin-top:10px;border:2px solid #000;padding:9px 12px;}
+.desc-title{display:block;font-size:13px;font-weight:700;margin-bottom:4px;}
+.desc-text{font-size:14px;font-weight:700;line-height:1.8;}
+/* MONEY GRID */
+.money-grid{display:grid;grid-template-columns:1fr 1fr 1fr;margin-top:10px;border:2px solid #000;}
+.mg-cell{padding:10px 12px;text-align:center;}
+.mg-cell+.mg-cell{border-inline-start:1px solid #222;}
+.mg-lbl{display:block;font-size:13px;font-weight:700;margin-bottom:5px;}
+.mg-val{font-family:var(--numbers);font-size:26px;font-weight:700;direction:ltr;line-height:1;}
+.mg-cur{display:block;font-size:12px;font-weight:700;margin-top:3px;}
+/* PROGRESS */
+.prog-wrap{margin-top:8px;}
+.prog-head{display:flex;justify-content:space-between;font-size:13px;font-weight:700;margin-bottom:5px;}
+.prog-track{height:8px;background:#ddd;border:1px solid #bbb;}
+.prog-fill{height:100%;background:#000;}
+/* PAYMENTS TABLE */
+.items-section{width:100%;margin-top:14px;}
+.table-note{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:7px;font-size:13px;font-weight:700;}
+.items-table{width:100%;border-collapse:collapse;table-layout:fixed;}
+.col-n{width:7%;}.col-d{width:35%;}.col-nt{width:33%;}.col-a{width:25%;}
+.items-table th,.items-table td{border:1.5px solid #222;padding:9px 5px;vertical-align:middle;}
+.items-table th{background:var(--header-fill);color:#000;text-align:center;font-size:14px;font-weight:700;line-height:1.5;}
+.items-table th span{display:block;margin-top:2px;font-family:var(--numbers);font-size:10px;font-weight:700;}
+.items-table td{color:#000;font-size:15px;font-weight:700;line-height:1.6;}
+.td-n{text-align:center;font-family:var(--numbers);}
+.td-amt{text-align:center;font-family:var(--numbers);font-size:16px;font-weight:700;}
+.td-note{font-size:13px;font-weight:700;color:#333;}
+/* NOTES */
+.notes-wrap{margin-top:10px;border:2px solid #000;padding:9px 12px;min-height:32px;}
+.notes-title{display:block;font-size:13px;font-weight:700;margin-bottom:4px;}
+.notes-text{font-size:14px;font-weight:700;line-height:1.8;white-space:pre-wrap;}
+/* BOTTOM */
+.invoice-bottom{margin-top:auto;padding-top:36px;}
+.signatures{display:grid;grid-template-columns:1fr 1fr;gap:48px;margin-bottom:20px;}
+.signature{padding-top:9px;border-top:2px solid #000;text-align:center;font-size:15px;font-weight:700;}
+.footer{padding-top:10px;border-top:2px solid #000;text-align:center;font-size:15px;font-weight:700;line-height:1.8;}
+
+@page{size:A4 portrait;margin:6mm;}
+@media print{
+  html,body{margin:0!important;padding:0!important;background:#fff!important;font-family:Tahoma,Arial,sans-serif;font-size:12pt;font-weight:700;}
+  .toolbar{display:none!important;}
+  .invoice{width:100%!important;min-height:284mm!important;margin:0!important;padding:0!important;border:0!important;box-shadow:none!important;background:#fff!important;}
+  .invoice,.invoice *{color:#000!important;font-weight:700!important;}
+  .company-header{grid-template-columns:minmax(0,1fr) 47mm;gap:5mm;padding-bottom:4mm;border-bottom:.7mm solid #000;}
+  .company-name{font-size:20pt;}
+  .company-tagline{font-size:12pt;}
+  .company-en{font-size:10pt;}
+  .brand strong{font-size:17pt;}
+  .brand-line{height:.8mm;background:#000!important;}
+  .identity{margin-top:3mm;border:.5mm solid #000;}
+  .id-cell{padding:2.5mm;}
+  .lbl{font-size:11pt;}
+  .id-val{font-size:12pt;}
+  .id-heading h1{font-size:17pt;}
+  .id-heading p{font-size:10pt;}
+  .stamp{border:.5mm solid #000;font-size:11pt;}
+  .customer{margin-top:3mm;border:.5mm solid #000;}
+  .cust-cell{padding:2.5mm;}
+  .cust-val{font-size:12pt;}
+  .desc-box{margin-top:3mm;border:.5mm solid #000;padding:2.5mm;}
+  .desc-title{font-size:11pt;}
+  .desc-text{font-size:11pt;}
+  .money-grid{margin-top:3mm;border:.5mm solid #000;}
+  .mg-cell{padding:3mm 4mm;}
+  .mg-lbl{font-size:11pt;}
+  .mg-val{font-size:20pt;}
+  .mg-cur{font-size:10pt;}
+  .prog-wrap{margin-top:2mm;}
+  .prog-head{font-size:11pt;}
+  .prog-track{height:3mm;background:#ddd!important;}
+  .prog-fill{background:#000!important;}
+  .items-section{margin-top:4mm;}
+  .table-note{margin-bottom:2mm;font-size:10pt;}
+  .items-table th,.items-table td{padding:2.5mm 1mm;border:.35mm solid #000!important;}
+  .items-table th{background:#e5e5e5!important;font-size:11pt;}
+  .items-table th span{font-size:9pt;}
+  .items-table td{font-size:12pt;}
+  .td-amt{font-size:13pt;}
+  .notes-wrap{margin-top:3mm;border:.5mm solid #000;padding:2.5mm;}
+  .notes-title{font-size:11pt;}
+  .notes-text{font-size:11pt;}
+  .invoice-bottom{margin-top:auto!important;padding-top:10mm;}
+  .signatures{gap:14mm;margin-bottom:5mm;}
+  .signature{padding-top:3mm;border-top:.5mm solid #000;font-size:12pt;}
+  .footer{padding-top:3mm;border-top:.5mm solid #000;font-size:12pt;}
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+}
+</style>
+</head>
+<body>
+
+{% set pct = ((debt.paid_amount / debt.total_amount)*100)|round|int if debt.total_amount > 0 else 0 %}
+{% set shop_tagline = settings_get('shop_tagline','') %}
+
+<div class="toolbar">
+  <span class="toolbar-title">سند دين — {{ debt.customer_name }}</span>
+  <div class="toolbar-actions">
+    <button class="btn btn-sec" onclick="window.history.back()">إغلاق</button>
+    <button class="btn" onclick="window.print()">طباعة / حفظ PDF</button>
+  </div>
+</div>
+
+<main class="invoice">
+
+  <header class="company-header">
+    <div>
+      <div class="company-name">{{ shop_name }}</div>
+      {% if shop_tagline %}<div class="company-tagline">{{ shop_tagline }}</div>{% endif %}
+      <div class="company-en">OIL & LUBRICANTS & AUTO PARTS</div>
+    </div>
+    <div class="brand" dir="ltr">
+      <strong>RUN X</strong>
+      <span>OIL & AUTO PARTS</span>
+      <div class="brand-line"></div>
+    </div>
+  </header>
+
+  <section class="identity">
+    <div class="id-cell">
+      <span class="lbl">رقم السند</span>
+      <div class="id-val num" dir="ltr">#{{ '%04d'|format(debt.id) }}</div>
+      <div class="id-val num" dir="ltr">{{ debt.debt_date.strftime('%Y/%m/%d') }}</div>
+    </div>
+    <div class="id-cell id-heading">
+      <h1>سند دين</h1>
+      <p dir="ltr" lang="en">DEBT VOUCHER</p>
+      <div>
+        {% if debt.status=='paid' %}<span class="stamp">مسدد بالكامل</span>
+        {% elif debt.status=='partial' %}<span class="stamp">سداد جزئي</span>
+        {% else %}<span class="stamp">غير مسدد</span>{% endif %}
+      </div>
+    </div>
+    <div class="id-cell">
+      <span class="lbl">تاريخ الاستحقاق</span>
+      <div class="id-val num" dir="ltr">{% if debt.due_date %}{{ debt.due_date.strftime('%Y/%m/%d') }}{% else %}—{% endif %}</div>
+    </div>
+  </section>
+
+  <section class="customer">
+    <div class="cust-cell">
+      <span class="lbl">اسم الزبون</span>
+      <div class="cust-val">{{ debt.customer_name }}</div>
+    </div>
+    <div class="cust-cell">
+      <span class="lbl">رقم الهاتف</span>
+      <div class="cust-val num" dir="ltr">{{ debt.customer_phone or '—' }}</div>
+    </div>
+    <div class="cust-cell">
+      <span class="lbl">الحالة</span>
+      <div class="cust-val">{% if debt.status=='paid' %}مسدد{% elif debt.status=='partial' %}جزئي{% else %}غير مسدد{% endif %}</div>
+    </div>
+  </section>
+
+  {% if debt.description %}
+  <div class="desc-box">
+    <span class="desc-title">وصف الدين</span>
+    <div class="desc-text">{{ debt.description }}</div>
+  </div>
+  {% endif %}
+
+  <div class="money-grid">
+    <div class="mg-cell">
+      <span class="mg-lbl">إجمالي الدين</span>
+      <div class="mg-val">{{ "%.2f"|format(debt.total_amount) }}</div>
+      <span class="mg-cur">{{ currency }}</span>
+    </div>
+    <div class="mg-cell">
+      <span class="mg-lbl">المسدد</span>
+      <div class="mg-val">{{ "%.2f"|format(debt.paid_amount) }}</div>
+      <span class="mg-cur">{{ currency }}</span>
+    </div>
+    <div class="mg-cell">
+      <span class="mg-lbl">المتبقي</span>
+      <div class="mg-val">{{ "%.2f"|format(debt.remaining) }}</div>
+      <span class="mg-cur">{{ currency }}</span>
+    </div>
+  </div>
+
+  <div class="prog-wrap">
+    <div class="prog-head"><span>نسبة السداد</span><span class="num">{{ pct }}%</span></div>
+    <div class="prog-track"><div class="prog-fill" style="width:{{ pct }}%"></div></div>
+  </div>
+
+  {% if debt.payments %}
+  <section class="items-section">
+    <div class="table-note">
+      <span>سجل الدفعات: <strong class="num">{{ debt.payments|list|length }}</strong> دفعة</span>
+      <span>العملة: {{ currency }}</span>
+    </div>
+    <table class="items-table">
+      <colgroup><col class="col-n"><col class="col-d"><col class="col-nt"><col class="col-a"></colgroup>
+      <thead>
+        <tr>
+          <th>م<span>NO.</span></th>
+          <th>التاريخ<span>DATE</span></th>
+          <th>ملاحظة<span>NOTE</span></th>
+          <th>المبلغ<span>AMOUNT</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for pay in debt.payments|sort(attribute='paid_date') %}
+        <tr>
+          <td class="td-n">{{ loop.index }}</td>
+          <td class="td-n num">{{ pay.paid_date.strftime('%Y/%m/%d %H:%M') }}</td>
+          <td class="td-note">{{ pay.notes or '—' }}</td>
+          <td class="td-amt">{{ "%.2f"|format(pay.amount) }}</td>
+        </tr>
+        {% endfor %}
+        {% for i in range([6-debt.payments|list|length,2]|min) %}
+        <tr style="height:30px;"><td class="td-n" style="color:#ddd;">{{ debt.payments|list|length+i+1 }}</td><td></td><td></td><td></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+  {% endif %}
+
+  {% if debt.notes %}
+  <div class="notes-wrap">
+    <span class="notes-title">ملاحظات</span>
+    <div class="notes-text">{{ debt.notes }}</div>
+  </div>
+  {% endif %}
+
+  <div class="invoice-bottom">
+    <div class="signatures">
+      <div class="signature">توقيع الزبون</div>
+      <div class="signature">توقيع المحل</div>
+    </div>
+    <footer class="footer">
+      {% if invoice_footer %}{{ invoice_footer }}{% endif %}
+    </footer>
+  </div>
+
+</main>
+
+<script>
+if(new URLSearchParams(location.search).get('autoprint')==='1')
+  window.addEventListener('load',function(){setTimeout(window.print,400);});
+</script>
+</body>
+</html>

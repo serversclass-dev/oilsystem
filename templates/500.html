@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>500 — خطأ في الخادم</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet"/>
+
+  <style>
+    :root {
+      --asphalt:    #17191b;
+      --paper:      #f2f0ea;
+      --white:      #ffffff;
+      --signal:     #ff5c35;
+      --signal-dark:#dc3e19;
+      --instrument: #4478ff;
+      --steel:      #a8adb3;
+      --ink:        #17191b;
+      --muted:      #696e72;
+      --warning:    #b56a00;
+      --line-light: rgba(23,25,27,.13);
+      --line-dark:  rgba(255,255,255,.13);
+      --display: "Barlow Condensed", "Tajawal", sans-serif;
+      --arabic:  "Tajawal", sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      min-height: 100vh;
+      font-family: var(--arabic);
+      background: var(--paper);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      min-height: 100vh;
+    }
+
+    /* Dark panel */
+    .dark-panel {
+      background:
+        radial-gradient(circle at 20% 80%, rgba(181,106,0,.2), transparent 40%),
+        radial-gradient(circle at 80% 20%, rgba(255,92,53,.1), transparent 40%),
+        var(--asphalt);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 60px 64px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .dark-panel::before {
+      content: "";
+      position: absolute;
+      bottom: -80px; left: -80px;
+      width: 400px; height: 400px;
+      border: 1px solid var(--line-dark);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    .dark-panel::after {
+      content: "";
+      position: absolute;
+      top: -40px; right: -40px;
+      width: 220px; height: 220px;
+      border: 1px solid rgba(255,255,255,.05);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    /* Gear icon */
+    .gear-icon {
+      width: 56px; height: 56px;
+      background: rgba(181,106,0,.15);
+      border: 1px solid rgba(181,106,0,.25);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+      position: relative;
+      z-index: 1;
+      animation: gear-spin 8s linear infinite;
+    }
+    @keyframes gear-spin {
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(360deg); }
+    }
+    .gear-icon svg {
+      width: 28px; height: 28px;
+      fill: none;
+      stroke: var(--warning);
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 2;
+    }
+
+    .err-code {
+      font-family: var(--display);
+      font-size: clamp(7rem, 14vw, 12rem);
+      font-weight: 800;
+      line-height: .85;
+      letter-spacing: -.05em;
+      color: var(--white);
+      position: relative;
+      z-index: 1;
+    }
+    .err-code span { color: var(--warning); }
+
+    .err-line {
+      width: 48px;
+      height: 3px;
+      background: var(--warning);
+      margin: 20px 0 16px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .err-title {
+      font-family: var(--display);
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--white);
+      letter-spacing: -.02em;
+      position: relative;
+      z-index: 1;
+    }
+
+    .err-sub {
+      font-size: .78rem;
+      color: var(--steel);
+      margin-top: 8px;
+      line-height: 1.7;
+      max-width: 320px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Tech info */
+    .err-code-box {
+      margin-top: 20px;
+      padding: 12px 16px;
+      background: rgba(255,255,255,.04);
+      border: 1px solid var(--line-dark);
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: .68rem;
+      color: #6a7177;
+      position: relative;
+      z-index: 1;
+      max-width: 320px;
+    }
+    .err-code-box span { color: var(--warning); }
+
+    /* Right panel */
+    .light-panel {
+      background: var(--paper);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 60px 64px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      margin-bottom: 40px;
+    }
+    .logo-mark {
+      position: relative;
+      width: 34px; height: 34px;
+      background: var(--asphalt);
+      border-radius: 50%;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .logo-mark::before, .logo-mark::after {
+      position: absolute; content: "";
+      background: var(--signal);
+    }
+    .logo-mark::before {
+      top: 15px; left: 5px;
+      width: 22px; height: 3px;
+      transform: rotate(-22deg);
+    }
+    .logo-mark::after {
+      top: 8px; left: 16px;
+      width: 3px; height: 18px;
+      transform: rotate(-22deg);
+    }
+    .logo-name {
+      font-family: var(--display);
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .nav-title {
+      font-family: var(--display);
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--ink);
+      margin-bottom: 8px;
+    }
+    .nav-sub {
+      font-size: .76rem;
+      color: var(--muted);
+      margin-bottom: 24px;
+      line-height: 1.6;
+      max-width: 320px;
+    }
+
+    /* Steps */
+    .steps {
+      width: 100%;
+      max-width: 320px;
+      margin-bottom: 24px;
+    }
+    .step {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--line-light);
+    }
+    .step:last-child { border-bottom: none; }
+    .step-num {
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      background: var(--asphalt);
+      color: var(--white);
+      font-family: var(--display);
+      font-size: .78rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .step-text {
+      font-size: .75rem;
+      color: var(--ink);
+      line-height: 1.55;
+    }
+    .step-text strong { color: var(--signal); }
+
+    .nav-links {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: 100%;
+      max-width: 320px;
+    }
+
+    .nav-link-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      background: var(--white);
+      border: 1px solid var(--line-light);
+      border-radius: 10px;
+      text-decoration: none;
+      color: var(--ink);
+      font-size: .78rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: border-color .14s, box-shadow .14s, transform .12s;
+      font-family: var(--arabic);
+    }
+    .nav-link-item:hover {
+      border-color: rgba(23,25,27,.22);
+      box-shadow: 0 4px 16px rgba(23,25,27,.08);
+      transform: translateX(-2px);
+    }
+    .nav-link-icon {
+      width: 36px; height: 36px;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .nav-link-icon svg {
+      width: 18px; height: 18px;
+      fill: none; stroke: currentColor;
+      stroke-linecap: round; stroke-width: 1.8;
+    }
+    .nav-link-icon.signal  { background: rgba(255,92,53,.1);  color: var(--signal); }
+    .nav-link-icon.warning { background: rgba(181,106,0,.1);  color: var(--warning); }
+    .nav-link-icon.blue    { background: rgba(68,120,255,.1); color: var(--instrument); }
+
+    .nav-link-text { flex: 1; }
+    .nav-link-label { font-size: .78rem; font-weight: 600; color: var(--ink); }
+    .nav-link-desc  { font-size: .62rem; color: var(--muted); margin-top: 2px; }
+    .nav-link-arrow { color: var(--muted); font-size: .7rem; }
+
+    @media (max-width: 768px) {
+      body { grid-template-columns: 1fr; }
+      .dark-panel { padding: 48px 32px 40px; min-height: 40vh; }
+      .light-panel { padding: 40px 32px 48px; }
+      .logo { margin-bottom: 28px; }
+    }
+    @media (max-width: 480px) {
+      .dark-panel { padding: 36px 24px 32px; }
+      .light-panel { padding: 32px 24px 40px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .gear-icon { animation: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Dark panel -->
+  <div class="dark-panel">
+    <div class="gear-icon">
+      <svg viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+      </svg>
+    </div>
+    <div class="err-code"><span>5</span>0<span>0</span></div>
+    <div class="err-line"></div>
+    <div class="err-title">خطأ في الخادم</div>
+    <p class="err-sub">
+      حدث خطأ غير متوقع في الخادم.
+      الفريق على علم بهذه المشكلة — جرّب مجدداً بعد لحظات.
+    </p>
+    <div class="err-code-box">
+      <span>HTTP 500</span> — Internal Server Error<br>
+      يرجى المحاولة مجدداً أو التواصل مع المدير
+    </div>
+  </div>
+
+  <!-- Light panel -->
+  <div class="light-panel">
+
+    <a href="/" class="logo">
+      <span class="logo-mark" aria-hidden="true"></span>
+      <span class="logo-name">RUN X</span>
+    </a>
+
+    <div class="nav-title">ماذا تفعل الآن؟</div>
+    <p class="nav-sub">جرّب الخطوات التالية قبل التواصل مع الدعم الفني.</p>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-text">
+          <strong>أعد تحميل الصفحة</strong> — المشكلة قد تكون مؤقتة وتحل من تلقاء نفسها.
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-text">
+          امسح ذاكرة التخزين المؤقت للمتصفح ثم حاول مجدداً.
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-text">
+          إذا استمر الخطأ، تواصل مع مدير النظام وأخبره بما كنت تفعله.
+        </div>
+      </div>
+    </div>
+
+    <div class="nav-links">
+
+      <button onclick="window.location.reload()" class="nav-link-item">
+        <div class="nav-link-icon warning">
+          <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        </div>
+        <div class="nav-link-text">
+          <div class="nav-link-label">إعادة تحميل الصفحة</div>
+          <div class="nav-link-desc">حاول مجدداً الآن</div>
+        </div>
+        <span class="nav-link-arrow">↺</span>
+      </button>
+
+      <a href="/" class="nav-link-item">
+        <div class="nav-link-icon signal">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+        </div>
+        <div class="nav-link-text">
+          <div class="nav-link-label">لوحة التحكم</div>
+          <div class="nav-link-desc">العودة للصفحة الرئيسية</div>
+        </div>
+        <span class="nav-link-arrow">←</span>
+      </a>
+
+      <a href="/sales/new" class="nav-link-item">
+        <div class="nav-link-icon blue">
+          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+        </div>
+        <div class="nav-link-text">
+          <div class="nav-link-label">فاتورة جديدة</div>
+          <div class="nav-link-desc">تسجيل عملية بيع جديدة</div>
+        </div>
+        <span class="nav-link-arrow">←</span>
+      </a>
+
+    </div>
+
+  </div>
+
+</body>
+</html>

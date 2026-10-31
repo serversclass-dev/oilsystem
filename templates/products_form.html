@@ -1,0 +1,693 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ 'تعديل منتج' if product else 'منتج جديد' }} — {{ settings_get('shop_name','RUN X') }}{% endblock %}
+
+{% block extra_head %}
+<style>
+.form-layout {
+  display: grid;
+  grid-template-columns: minmax(0,1.5fr) minmax(0,.7fr);
+  gap: 18px;
+  align-items: start;
+}
+
+/* Margin live preview */
+.margin-preview {
+  background: var(--asphalt);
+  border-radius: var(--r4);
+  padding: 22px 20px;
+  color: var(--white);
+  position: sticky;
+  top: 88px;
+}
+.mp-label {
+  font-size: .62rem;
+  color: var(--steel);
+  display: block;
+  margin-bottom: 4px;
+  font-family: var(--arabic);
+}
+.mp-value {
+  font-family: var(--display);
+  font-weight: 800;
+  letter-spacing: -.04em;
+  line-height: .9;
+  display: block;
+}
+.mp-divider {
+  height: 1px;
+  background: var(--line-dark);
+  margin: 14px 0;
+}
+.mp-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: .72rem;
+  margin-bottom: 8px;
+}
+.mp-row:last-child { margin-bottom: 0; }
+.mp-row-label { color: var(--steel); }
+.mp-row-value { font-weight: 600; color: var(--white); }
+
+/* New category inline */
+.new-cat-wrap {
+  display: none;
+  margin-top: 8px;
+}
+.new-cat-wrap.show { display: block; }
+
+/* Barcode field */
+.barcode-wrap {
+  position: relative;
+}
+.barcode-wrap .form-control {
+  padding-left: 44px;
+  font-family: monospace;
+  letter-spacing: .05em;
+}
+.barcode-scan-btn {
+  position: absolute;
+  top: 50%; left: 8px;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: var(--r1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color .12s, background .12s;
+}
+.barcode-scan-btn:hover {
+  color: var(--signal);
+  background: rgba(255,92,53,.08);
+}
+.barcode-scan-btn svg {
+  width: 20px; height: 20px;
+  fill: none; stroke: currentColor;
+  stroke-linecap: round; stroke-width: 1.8;
+}
+
+/* Scanner modal overlay */
+.scanner-overlay {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(23,25,27,.85);
+  z-index: 600;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 16px;
+}
+.scanner-overlay.show { display: flex; }
+
+.scanner-box {
+  background: var(--white);
+  border-radius: var(--r5);
+  overflow: hidden;
+  width: 90%;
+  max-width: 480px;
+}
+.scanner-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--line-light);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.scanner-title {
+  font-family: var(--display);
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+.scanner-body {
+  padding: 20px;
+}
+#scanner-video-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4/3;
+  background: var(--asphalt);
+  border-radius: var(--r3);
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+#scanner-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.scanner-aim {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.scanner-aim-inner {
+  width: 200px; height: 80px;
+  border: 2px solid var(--signal);
+  border-radius: 6px;
+  box-shadow: 0 0 0 9999px rgba(0,0,0,.45);
+}
+.scanner-line {
+  position: absolute;
+  width: 180px; height: 2px;
+  background: var(--signal);
+  border-radius: 1px;
+  animation: scan-line 1.8s ease-in-out infinite;
+}
+@keyframes scan-line {
+  0%, 100% { top: calc(50% - 35px); }
+  50%       { top: calc(50% + 30px); }
+}
+.scanner-result {
+  text-align: center;
+  font-size: .8rem;
+  color: var(--muted);
+  min-height: 24px;
+}
+.scanner-result.found { color: var(--success); font-weight: 700; }
+
+@media (max-width: 880px) {
+  .form-layout { grid-template-columns: 1fr; }
+  .margin-preview { position: static; }
+}
+</style>
+{% endblock %}
+
+{% block topbar_pre %}المنتجات{% endblock %}
+{% block topbar_title %}{{ 'تعديل: ' + product.name if product else 'منتج جديد' }}{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('products_list') }}" class="btn btn-secondary">
+  <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+  المنتجات
+</a>
+{% endblock %}
+
+{% block content %}
+
+<form method="POST"
+      action="{{ url_for('products_edit', pid=product.id) if product else url_for('products_new') }}"
+      id="prod-form" novalidate>
+
+  <div class="form-layout">
+
+    <!-- ── LEFT: Fields ── -->
+    <div style="display:flex;flex-direction:column;gap:16px">
+
+      <!-- Basic info -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">معلومات المنتج</span>
+        </div>
+        <div class="panel-body" style="display:flex;flex-direction:column;gap:14px">
+
+          <div class="form-group">
+            <label class="form-label" for="name">اسم المنتج <span style="color:var(--signal)">*</span></label>
+            <input class="form-control" type="text" id="name" name="name"
+                   value="{{ product.name if product else '' }}"
+                   placeholder="مثال: زيت موتور 5W-40"
+                   required autofocus/>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="category_id">الفئة</label>
+            <select class="form-control" id="category_id" name="category_id"
+                    onchange="checkNewCat(this)">
+              <option value="">— بدون فئة —</option>
+              {% for c in categories %}
+              <option value="{{ c.id }}"
+                {% if product and product.category_id == c.id %}selected{% endif %}>
+                {{ c.name }}
+              </option>
+              {% endfor %}
+              <option value="__new__">+ إضافة فئة جديدة…</option>
+            </select>
+
+            <div class="new-cat-wrap" id="new-cat-wrap">
+              <input class="form-control" type="text" name="new_category"
+                     id="new_category"
+                     placeholder="اسم الفئة الجديدة"/>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="unit">وحدة القياس</label>
+            <select class="form-control" id="unit" name="unit">
+              {% set units = ['قطعة','لتر','كيلو','علبة','كرتون','زجاجة','متر','طقم','جالون'] %}
+              {% for u in units %}
+              <option value="{{ u }}" {% if product and product.unit == u %}selected{% elif not product and u == 'قطعة' %}selected{% endif %}>
+                {{ u }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Barcode -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">الباركود</span>
+          <span class="panel-count">لسرعة البيع والإدخال</span>
+        </div>
+        <div class="panel-body" style="display:flex;flex-direction:column;gap:10px">
+
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label" for="barcode">رقم الباركود / SKU</label>
+            <div class="barcode-wrap">
+              <input class="form-control" type="text" id="barcode" name="barcode"
+                     value="{{ product.barcode if product and product.barcode else '' }}"
+                     placeholder="امسح الباركود أو أدخله يدوياً…"
+                     autocomplete="off"/>
+              <button type="button" class="barcode-scan-btn"
+                      onclick="openScanner()"
+                      title="مسح بالكاميرا">
+                <svg viewBox="0 0 24 24">
+                  <path d="M3 5a2 2 0 0 1 2-2h2M3 19a2 2 0 0 0 2 2h2M19 5a2 2 0 0 0-2-2h-2M19 19a2 2 0 0 1-2 2h-2"/>
+                  <line x1="7" y1="12" x2="7" y2="12.01"/>
+                  <line x1="10" y1="8" x2="10" y2="16"/>
+                  <line x1="13" y1="10" x2="13" y2="14"/>
+                  <line x1="16" y1="8" x2="16" y2="16"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="alert alert-info" style="margin-bottom:0">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span>
+              عند إنشاء فاتورة جديدة يمكنك مسح الباركود مباشرة لإضافة المنتج تلقائياً.
+              يمكن أيضاً استخدام ماسح USB الخارجي — فقط اضغط في حقل البحث وامسح.
+            </span>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Pricing -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">الأسعار</span>
+        </div>
+        <div class="panel-body" style="display:flex;flex-direction:column;gap:14px">
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="buy_price">سعر الشراء ({{ currency }})</label>
+              <div class="input-group">
+                <input class="form-control" type="number" id="buy_price" name="buy_price"
+                       min="0" step="0.01"
+                       value="{{ '%.2f'|format(product.buy_price) if product else '0.00' }}"
+                       oninput="calcMargin()" required/>
+                <span class="input-addon">{{ currency }}</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="sell_price">سعر البيع ({{ currency }})</label>
+              <div class="input-group">
+                <input class="form-control" type="number" id="sell_price" name="sell_price"
+                       min="0" step="0.01"
+                       value="{{ '%.2f'|format(product.sell_price) if product else '0.00' }}"
+                       oninput="calcMargin()" required/>
+                <span class="input-addon">{{ currency }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick margin buttons -->
+          <div>
+            <span class="form-label" style="display:block;margin-bottom:6px">إضافة هامش سريع</span>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              {% for pct in [10,15,20,25,30,50] %}
+              <button type="button" class="btn btn-secondary btn-sm"
+                      onclick="applyMargin({{ pct }})">+{{ pct }}%</button>
+              {% endfor %}
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Stock -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">المخزون</span>
+        </div>
+        <div class="panel-body">
+          <div class="form-row">
+            {% if not product %}
+            <div class="form-group">
+              <label class="form-label" for="quantity">الكمية الابتدائية</label>
+              <input class="form-control" type="number" id="quantity" name="quantity"
+                     min="0" step="0.01" value="0"/>
+            </div>
+            {% endif %}
+            <div class="form-group">
+              <label class="form-label" for="alert_threshold">حد التنبيه (كمية)</label>
+              <input class="form-control" type="number" id="alert_threshold" name="alert_threshold"
+                     min="0" step="0.01"
+                     value="{{ '%.2f'|format(product.alert_threshold) if product else '5.00' }}"/>
+            </div>
+          </div>
+          {% if product %}
+          <div class="alert alert-info" style="margin-top:10px;margin-bottom:0">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span>الكمية الحالية: <strong>{{ product.quantity }} {{ product.unit }}</strong> — لتعديل الكمية استخدم صفحة <a href="{{ url_for('inventory') }}" style="color:inherit;font-weight:700;text-decoration:underline">الجرد</a></span>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+    </div><!-- /left -->
+
+    <!-- ── RIGHT: Preview ── -->
+    <div style="display:flex;flex-direction:column;gap:14px">
+
+      <!-- Margin card -->
+      <div class="margin-preview">
+        <span class="mp-label">هامش الربح</span>
+        <span class="mp-value" id="prev-margin" style="font-size:3rem;color:var(--signal)">0%</span>
+
+        <div class="mp-divider"></div>
+
+        <div class="mp-row">
+          <span class="mp-row-label">سعر الشراء</span>
+          <span class="mp-row-value" id="prev-buy">0.00 {{ currency }}</span>
+        </div>
+        <div class="mp-row">
+          <span class="mp-row-label">سعر البيع</span>
+          <span class="mp-row-value" id="prev-sell">0.00 {{ currency }}</span>
+        </div>
+        <div class="mp-row">
+          <span class="mp-row-label">الربح لكل وحدة</span>
+          <span class="mp-row-value" id="prev-profit" style="color:#9ab6ff">0.00 {{ currency }}</span>
+        </div>
+      </div>
+
+      <!-- Barcode preview -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">معاينة الباركود</span>
+        </div>
+        <div class="panel-body" style="text-align:center">
+          <div id="barcode-preview-wrap" style="min-height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center">
+            <svg id="barcode-svg" style="max-width:100%"></svg>
+            <div id="barcode-no-preview" class="text-xs text-muted" style="margin-top:6px">
+              أدخل رقم الباركود لمعاينته
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action panel -->
+      <div class="panel">
+        <div class="panel-body" style="display:flex;flex-direction:column;gap:8px">
+          <button class="btn btn-primary btn-lg" type="submit"
+                  style="width:100%;justify-content:center">
+            <svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v14a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            {{ 'حفظ التعديلات' if product else 'إضافة المنتج' }}
+          </button>
+
+          <a href="{{ url_for('products_list') }}"
+             class="btn btn-secondary" style="width:100%;justify-content:center">
+            إلغاء
+          </a>
+
+          {% if product %}
+          <hr class="divider">
+          <button type="button"
+                  class="btn btn-danger"
+                  style="width:100%;justify-content:center"
+                  onclick="showModal('del-modal')">
+            <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+            حذف المنتج
+          </button>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Product info (edit mode) -->
+      {% if product %}
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">معلومات</span>
+        </div>
+        <div style="padding:4px 18px 10px">
+          <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line-light);font-size:.76rem">
+            <span class="text-muted">الكمية الحالية</span>
+            <span class="fw-6 {% if product.is_low_stock %}text-danger{% else %}text-success{% endif %}">
+              {{ product.quantity }} {{ product.unit }}
+            </span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line-light);font-size:.76rem">
+            <span class="text-muted">قيمة المخزون</span>
+            <span class="fw-6">{{ "%.2f"|format(product.stock_value) }} {{ currency }}</span>
+          </div>
+          {% if product.barcode %}
+          <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line-light);font-size:.76rem">
+            <span class="text-muted">الباركود</span>
+            <span class="fw-6" style="font-family:monospace">{{ product.barcode }}</span>
+          </div>
+          {% endif %}
+          <div style="display:flex;justify-content:space-between;padding:9px 0;font-size:.76rem">
+            <span class="text-muted">تاريخ الإضافة</span>
+            <span class="fw-6">{{ product.created_at.strftime('%Y/%m/%d') }}</span>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+    </div><!-- /right -->
+
+  </div><!-- /layout -->
+
+</form>
+
+<!-- Delete modal (edit mode only) -->
+{% if product %}
+<div class="modal-overlay" id="del-modal" onclick="if(event.target===this)hideModal('del-modal')">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title">حذف المنتج</h3>
+      <button class="modal-close" onclick="hideModal('del-modal')" type="button">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:.82rem;color:var(--muted);line-height:1.65">
+        هل أنت متأكد من حذف المنتج
+        <strong style="color:var(--ink)">{{ product.name }}</strong> ؟
+      </p>
+    </div>
+    <div class="modal-footer">
+      <form method="POST" action="{{ url_for('products_delete', pid=product.id) }}">
+        <button class="btn btn-danger" type="submit">
+          <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+          حذف
+        </button>
+      </form>
+      <button class="btn btn-secondary" onclick="hideModal('del-modal')" type="button">إلغاء</button>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Camera scanner overlay -->
+<div class="scanner-overlay" id="scanner-overlay">
+  <div class="scanner-box">
+    <div class="scanner-header">
+      <h3 class="scanner-title">مسح الباركود</h3>
+      <button class="modal-close" type="button" onclick="closeScanner()">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="scanner-body">
+      <div id="scanner-video-wrap">
+        <video id="scanner-video" autoplay playsinline muted></video>
+        <div class="scanner-aim">
+          <div style="position:relative">
+            <div class="scanner-aim-inner"></div>
+            <div class="scanner-line"></div>
+          </div>
+        </div>
+      </div>
+      <div class="scanner-result" id="scanner-result">وجّه الكاميرا نحو الباركود…</div>
+      <div style="margin-top:12px;display:flex;gap:8px">
+        <button class="btn btn-secondary btn-sm" type="button" onclick="closeScanner()" style="flex:1;justify-content:center">إلغاء</button>
+        <button class="btn btn-primary btn-sm" type="button" onclick="confirmScan()" id="confirm-scan-btn" disabled style="flex:1;justify-content:center">تأكيد</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const CURRENCY = "{{ currency }}";
+var scannedValue = '';
+var scanStream   = null;
+var scanInterval = null;
+
+/* ── Margin calc ── */
+function calcMargin() {
+  var buy  = parseFloat(document.getElementById('buy_price').value)  || 0;
+  var sell = parseFloat(document.getElementById('sell_price').value) || 0;
+  var profit = sell - buy;
+  var margin = buy > 0 ? ((profit / buy) * 100) : 0;
+
+  document.getElementById('prev-buy').textContent    = buy.toFixed(2)    + ' ' + CURRENCY;
+  document.getElementById('prev-sell').textContent   = sell.toFixed(2)   + ' ' + CURRENCY;
+  document.getElementById('prev-profit').textContent = profit.toFixed(2) + ' ' + CURRENCY;
+
+  var el = document.getElementById('prev-margin');
+  el.textContent = margin.toFixed(1) + '%';
+  el.style.color = margin >= 20 ? 'var(--success)'
+                 : margin >= 10 ? '#e6a630'
+                 :                'var(--danger)';
+}
+
+function applyMargin(pct) {
+  var buy = parseFloat(document.getElementById('buy_price').value) || 0;
+  if (buy <= 0) return;
+  document.getElementById('sell_price').value = (buy * (1 + pct / 100)).toFixed(2);
+  calcMargin();
+}
+
+/* ── Category new ── */
+function checkNewCat(sel) {
+  var wrap = document.getElementById('new-cat-wrap');
+  var inp  = document.getElementById('new_category');
+  if (sel.value === '__new__') {
+    wrap.classList.add('show');
+    inp.required = true;
+    inp.focus();
+  } else {
+    wrap.classList.remove('show');
+    inp.required = false;
+    inp.value = '';
+  }
+}
+
+/* ── Barcode live preview (simple bars) ── */
+document.getElementById('barcode').addEventListener('input', function() {
+  renderBarcode(this.value.trim());
+});
+
+function renderBarcode(code) {
+  var svg  = document.getElementById('barcode-svg');
+  var info = document.getElementById('barcode-no-preview');
+  if (!code) {
+    svg.innerHTML = '';
+    svg.setAttribute('width', 0);
+    info.textContent = 'أدخل رقم الباركود لمعاينته';
+    return;
+  }
+  info.textContent = code;
+  // Draw simple visual bar representation
+  var bars = 60;
+  var w    = 220;
+  var h    = 56;
+  svg.setAttribute('width',  w);
+  svg.setAttribute('height', h);
+  svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+  var html = '';
+  var barW = w / bars;
+  for (var i = 0; i < bars; i++) {
+    var charCode = code.charCodeAt(i % code.length) || 65;
+    var filled   = (charCode + i) % 3 !== 0;
+    if (filled) {
+      html += '<rect x="' + (i * barW).toFixed(1) + '" y="0" width="' + (barW * .7).toFixed(1) + '" height="' + h + '" fill="#17191b"/>';
+    }
+  }
+  svg.innerHTML = html;
+}
+
+/* ── Camera Scanner ── */
+function openScanner() {
+  scannedValue = '';
+  document.getElementById('scanner-result').textContent    = 'وجّه الكاميرا نحو الباركود…';
+  document.getElementById('scanner-result').className      = 'scanner-result';
+  document.getElementById('confirm-scan-btn').disabled     = true;
+  document.getElementById('scanner-overlay').classList.add('show');
+  document.body.style.overflow = 'hidden';
+
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+    .then(function(stream) {
+      scanStream = stream;
+      var video  = document.getElementById('scanner-video');
+      video.srcObject = stream;
+
+      // Use BarcodeDetector if available
+      if ('BarcodeDetector' in window) {
+        var detector = new BarcodeDetector({ formats: ['ean_13','ean_8','code_128','code_39','qr_code','upc_a','upc_e','itf','codabar'] });
+        scanInterval = setInterval(function() {
+          detector.detect(video).then(function(barcodes) {
+            if (barcodes.length > 0) {
+              onBarcodeDetected(barcodes[0].rawValue);
+            }
+          }).catch(function(){});
+        }, 400);
+      } else {
+        // Fallback: manual entry
+        document.getElementById('scanner-result').textContent =
+          'الكاميرا مفتوحة — أدخل الباركود يدوياً أو استخدم ماسح USB';
+      }
+    })
+    .catch(function(err) {
+      document.getElementById('scanner-result').textContent =
+        'تعذّر الوصول إلى الكاميرا — استخدم ماسح USB أو الإدخال اليدوي';
+    });
+}
+
+function onBarcodeDetected(value) {
+  if (scannedValue === value) return;
+  scannedValue = value;
+  clearInterval(scanInterval);
+  var res = document.getElementById('scanner-result');
+  res.textContent = '✓ تم المسح: ' + value;
+  res.className   = 'scanner-result found';
+  document.getElementById('confirm-scan-btn').disabled = false;
+}
+
+function confirmScan() {
+  if (scannedValue) {
+    document.getElementById('barcode').value = scannedValue;
+    renderBarcode(scannedValue);
+  }
+  closeScanner();
+}
+
+function closeScanner() {
+  clearInterval(scanInterval);
+  if (scanStream) {
+    scanStream.getTracks().forEach(function(t){ t.stop(); });
+    scanStream = null;
+  }
+  var video = document.getElementById('scanner-video');
+  video.srcObject = null;
+  document.getElementById('scanner-overlay').classList.remove('show');
+  document.body.style.overflow = '';
+  scannedValue = '';
+}
+
+// Close on Escape
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape' && document.getElementById('scanner-overlay').classList.contains('show')) {
+    closeScanner();
+  }
+});
+
+// Init
+calcMargin();
+renderBarcode(document.getElementById('barcode').value);
+</script>
+{% endblock %}

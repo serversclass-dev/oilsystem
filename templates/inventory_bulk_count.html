@@ -1,0 +1,343 @@
+{% extends 'base.html' %}
+
+{% block title %}جرد شامل — {{ settings_get('shop_name','RUN X') }}{% endblock %}
+
+{% block extra_head %}
+<style>
+/* Category section header */
+.cat-section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 20px;
+  background: rgba(242,240,234,.6);
+  border-bottom: 1px solid var(--line-light);
+  border-top: 1px solid var(--line-light);
+  font-family: var(--display);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -.01em;
+}
+.cat-section-header:first-child { border-top: none; }
+
+/* Count input */
+.count-input {
+  width: 100px;
+  height: 38px;
+  padding: 0 10px;
+  background: var(--paper);
+  border: 1px solid var(--line-light);
+  border-radius: var(--r2);
+  color: var(--ink);
+  font-family: var(--arabic);
+  font-size: .82rem;
+  text-align: center;
+  outline: none;
+  transition: border-color .12s, background .12s;
+}
+.count-input:focus {
+  border-color: var(--signal);
+  background: var(--white);
+}
+.count-input.changed {
+  border-color: var(--instrument);
+  background: rgba(68,120,255,.04);
+  font-weight: 700;
+}
+
+/* Diff indicator */
+.row-diff {
+  font-family: var(--display);
+  font-size: .9rem;
+  font-weight: 700;
+  min-width: 48px;
+  text-align: center;
+  transition: color .15s;
+}
+
+/* Sticky toolbar */
+.bulk-toolbar {
+  position: sticky;
+  bottom: 0;
+  background: rgba(242,240,234,.96);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-top: 1px solid var(--line-light);
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 20;
+  flex-wrap: wrap;
+}
+.toolbar-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 70px;
+}
+.toolbar-stat-val {
+  font-family: var(--display);
+  font-size: 1.3rem;
+  font-weight: 700;
+  line-height: 1;
+}
+.toolbar-stat-lbl {
+  font-size: .58rem;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+/* Quick actions bar */
+.quick-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--line-light);
+  background: rgba(242,240,234,.3);
+  flex-wrap: wrap;
+}
+</style>
+{% endblock %}
+
+{% block topbar_pre %}المخزون{% endblock %}
+{% block topbar_title %}جرد شامل{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('inventory') }}" class="btn btn-secondary">
+  <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+  الجرد
+</a>
+{% endblock %}
+
+{% block content %}
+
+<div class="panel" style="margin-bottom:80px">
+
+  <!-- Info alert -->
+  <div style="padding:14px 20px;border-bottom:1px solid var(--line-light)">
+    <div class="alert alert-info" style="margin-bottom:0">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <span>
+        أدخل الكمية الفعلية لكل منتج. اترك الحقل فارغاً للمنتجات التي لم تُجرَد.
+        سيتم عرض ملخص الفروق قبل الاعتماد النهائي.
+      </span>
+    </div>
+  </div>
+
+  <!-- Quick actions -->
+  <div class="quick-bar">
+    <span class="text-xs text-muted fw-6">أدوات سريعة:</span>
+    <button type="button" class="btn btn-secondary btn-sm" onclick="fillCurrentAll()">
+      <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      تعبئة بالكميات الحالية
+    </button>
+    <button type="button" class="btn btn-secondary btn-sm" onclick="clearAll()">
+      <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      مسح الكل
+    </button>
+    <button type="button" class="btn btn-secondary btn-sm" onclick="fillZeroAll()">
+      صفّر الكل
+    </button>
+    <div style="margin-right:auto" class="text-xs text-muted">
+      {{ products|length }} منتج
+    </div>
+  </div>
+
+  <!-- Products form -->
+  <form method="POST" action="{{ url_for('inventory_bulk_count') }}" id="bulk-form">
+    <input type="hidden" name="action" id="form-action" value="preview">
+
+    {% set ns = namespace(prev_cat=none) %}
+    {% for p in products %}
+
+      {% if p.category_obj and p.category_obj.name != ns.prev_cat %}
+      {% set ns.prev_cat = p.category_obj.name %}
+      <div class="cat-section-header">
+        <svg viewBox="0 0 24 24" style="width:15px;height:15px;fill:none;stroke:var(--signal);stroke-linecap:round;stroke-width:2;flex-shrink:0">
+          <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+          <line x1="7" y1="7" x2="7.01" y2="7"/>
+        </svg>
+        {{ p.category_obj.name }}
+      </div>
+      {% elif not p.category_obj and ns.prev_cat != '__none__' %}
+      {% set ns.prev_cat = '__none__' %}
+      <div class="cat-section-header">
+        <svg viewBox="0 0 24 24" style="width:15px;height:15px;fill:none;stroke:var(--muted);stroke-linecap:round;stroke-width:2;flex-shrink:0">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        بدون فئة
+      </div>
+      {% endif %}
+
+      <div style="display:flex;align-items:center;padding:10px 20px;
+                  border-bottom:1px solid var(--line-light);gap:12px;transition:background .1s"
+           id="prow-{{ p.id }}"
+           onmouseover="this.style.background='rgba(242,240,234,.4)'"
+           onmouseout="this.style.background=''">
+
+        <!-- Name -->
+        <div style="flex:1;min-width:0">
+          <div class="text-sm fw-6" style="color:var(--ink)">{{ p.name }}</div>
+          <div class="text-xs text-muted">
+            الحالي: <strong id="cur-{{ p.id }}">{{ p.quantity }}</strong> {{ p.unit }}
+            {% if p.is_low_stock %}
+            <span class="badge {% if p.quantity == 0 %}badge-danger{% else %}badge-warning{% endif %} no-dot" style="margin-right:4px">
+              {% if p.quantity == 0 %}نافد{% else %}ناقص{% endif %}
+            </span>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Input -->
+        <div style="flex-shrink:0">
+          <input
+            class="count-input"
+            type="number"
+            name="qty_{{ p.id }}"
+            id="inp-{{ p.id }}"
+            min="0"
+            step="0.01"
+            placeholder="—"
+            data-current="{{ p.quantity }}"
+            oninput="onQtyInput({{ p.id }}, this.value)"
+          />
+        </div>
+
+        <!-- Unit -->
+        <div class="text-xs text-muted" style="width:36px;flex-shrink:0">{{ p.unit }}</div>
+
+        <!-- Diff -->
+        <div class="row-diff text-muted" id="diff-{{ p.id }}">—</div>
+
+      </div>
+    {% endfor %}
+
+  </form>
+
+</div>
+
+<!-- Sticky bottom toolbar -->
+<div class="bulk-toolbar no-print">
+  <div class="toolbar-stat">
+    <span class="toolbar-stat-val text-instrument" id="tb-changed">0</span>
+    <span class="toolbar-stat-lbl">منتج تغيّر</span>
+  </div>
+  <div class="toolbar-stat">
+    <span class="toolbar-stat-val text-success" id="tb-added">0</span>
+    <span class="toolbar-stat-lbl">زيادة</span>
+  </div>
+  <div class="toolbar-stat">
+    <span class="toolbar-stat-val text-danger" id="tb-removed">0</span>
+    <span class="toolbar-stat-lbl">نقص</span>
+  </div>
+
+  <div style="flex:1"></div>
+
+  <button type="button" class="btn btn-secondary" onclick="submitBulk('preview')">
+    <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+    معاينة الفروق
+  </button>
+  <button type="button" class="btn btn-primary btn-lg" onclick="submitBulk('preview')" id="commit-btn">
+    <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+    معاينة واعتماد
+  </button>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+var state = {}; // pid → {current, newVal}
+
+// Init state from DOM
+document.querySelectorAll('.count-input').forEach(function(inp) {
+  var pid = inp.id.replace('inp-', '');
+  state[pid] = { current: parseFloat(inp.dataset.current) || 0, newVal: null };
+});
+
+function onQtyInput(pid, val) {
+  var inp  = document.getElementById('inp-' + pid);
+  var diff = document.getElementById('diff-' + pid);
+  var cur  = state[pid].current;
+
+  if (val === '' || val === null) {
+    state[pid].newVal = null;
+    inp.classList.remove('changed');
+    diff.textContent = '—';
+    diff.style.color = 'var(--muted)';
+  } else {
+    var nv   = parseFloat(val) || 0;
+    var d    = nv - cur;
+    state[pid].newVal = nv;
+    inp.classList.toggle('changed', nv !== cur);
+
+    if (d > 0) {
+      diff.textContent = '+' + d.toFixed(2);
+      diff.style.color = 'var(--success)';
+    } else if (d < 0) {
+      diff.textContent = d.toFixed(2);
+      diff.style.color = 'var(--danger)';
+    } else {
+      diff.textContent = '±0';
+      diff.style.color = 'var(--muted)';
+    }
+  }
+  updateToolbar();
+}
+
+function updateToolbar() {
+  var changed = 0, added = 0, removed = 0;
+  Object.keys(state).forEach(function(pid) {
+    var s = state[pid];
+    if (s.newVal !== null && s.newVal !== s.current) {
+      changed++;
+      if (s.newVal > s.current) added++;
+      else removed++;
+    }
+  });
+  document.getElementById('tb-changed').textContent = changed;
+  document.getElementById('tb-added').textContent   = added;
+  document.getElementById('tb-removed').textContent = removed;
+}
+
+function fillCurrentAll() {
+  Object.keys(state).forEach(function(pid) {
+    var inp = document.getElementById('inp-' + pid);
+    if (inp) {
+      inp.value = state[pid].current;
+      onQtyInput(pid, inp.value);
+    }
+  });
+}
+
+function clearAll() {
+  Object.keys(state).forEach(function(pid) {
+    var inp = document.getElementById('inp-' + pid);
+    if (inp) {
+      inp.value = '';
+      onQtyInput(pid, '');
+    }
+  });
+}
+
+function fillZeroAll() {
+  Object.keys(state).forEach(function(pid) {
+    var inp = document.getElementById('inp-' + pid);
+    if (inp) {
+      inp.value = '0';
+      onQtyInput(pid, '0');
+    }
+  });
+}
+
+function submitBulk(action) {
+  document.getElementById('form-action').value = action;
+  document.getElementById('bulk-form').submit();
+}
+</script>
+{% endblock %}

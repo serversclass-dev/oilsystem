@@ -1,0 +1,392 @@
+{% extends 'base.html' %}
+
+{% block title %}الأرباح — {{ settings_get('shop_name','RUN X') }}{% endblock %}
+
+{% block extra_head %}
+<style>
+.profits-kpi {
+  display: grid;
+  grid-template-columns: repeat(3,1fr);
+  gap: 14px;
+  margin-bottom: 20px;
+}
+.profits-kpi-2 {
+  display: grid;
+  grid-template-columns: repeat(3,1fr);
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+/* Hero dark card */
+.profit-hero {
+  background:
+    radial-gradient(circle at 90% 10%, rgba(68,120,255,.2), transparent 35%),
+    radial-gradient(circle at 10% 90%, rgba(255,92,53,.15), transparent 35%),
+    var(--asphalt);
+  border-radius: var(--r4);
+  color: var(--white);
+  padding: 28px 28px 24px;
+  margin-bottom: 20px;
+  border: 1px solid rgba(255,255,255,.06);
+}
+.hero-grid {
+  display: grid;
+  grid-template-columns: repeat(3,1fr);
+  gap: 1px;
+  background: var(--line-dark);
+  border: 1px solid var(--line-dark);
+  border-radius: var(--r3);
+  overflow: hidden;
+  margin-top: 20px;
+}
+.hero-cell {
+  padding: 18px 20px;
+  background: rgba(255,255,255,.02);
+}
+.hero-cell-label {
+  font-size: .62rem;
+  color: var(--steel);
+  display: block;
+  margin-bottom: 6px;
+  font-family: var(--arabic);
+}
+.hero-cell-value {
+  font-family: var(--display);
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: .9;
+  letter-spacing: -.04em;
+  display: block;
+}
+
+/* Date shortcuts */
+.date-shortcuts {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+/* Top products */
+.top-prod-bar {
+  height: 6px;
+  background: var(--line-light);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 5px;
+}
+.top-prod-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--signal);
+  transition: width .4s ease;
+}
+
+.profits-layout {
+  display: grid;
+  grid-template-columns: minmax(0,1.55fr) minmax(0,.65fr);
+  gap: 18px;
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .profits-layout { grid-template-columns: 1fr; }
+  .profits-kpi { grid-template-columns: repeat(2,1fr); }
+  .profits-kpi-2 { grid-template-columns: repeat(2,1fr); }
+  .hero-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+  .profits-kpi, .profits-kpi-2 { grid-template-columns: 1fr 1fr; }
+}
+</style>
+{% endblock %}
+
+{% block topbar_pre %}التقارير{% endblock %}
+{% block topbar_title %}الأرباح{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('sales_list') }}" class="btn btn-secondary">
+  <svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
+  الفواتير
+</a>
+{% endblock %}
+
+{% block content %}
+
+<!-- Hero performance card -->
+<div class="profit-hero">
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap">
+    <div>
+      <div style="font-size:.65rem;color:var(--steel);margin-bottom:6px;font-family:var(--arabic)">اليوم — {{ today.strftime('%d/%m/%Y') }}</div>
+      <div style="font-family:var(--display);font-size:clamp(2.5rem,5vw,4.5rem);font-weight:800;line-height:.88;letter-spacing:-.04em">
+        {{ "%.0f"|format(today_revenue) }}
+        <span style="font-size:1.2rem;color:var(--steel);font-weight:600"> {{ currency }}</span>
+      </div>
+      <div style="font-size:.7rem;color:var(--steel);margin-top:8px">
+        ربح اليوم:
+        <span style="color:{% if today_profit >= 0 %}#7ec8a0{% else %}#f09090{% endif %};font-weight:700">
+          {{ "%.2f"|format(today_profit) }} {{ currency }}
+        </span>
+        &nbsp;·&nbsp; {{ today_count }} فاتورة
+      </div>
+    </div>
+    <div style="text-align:left">
+      <div style="font-size:.65rem;color:var(--steel);margin-bottom:6px">الشهر الحالي</div>
+      <div style="font-family:var(--display);font-size:clamp(1.8rem,3vw,2.8rem);font-weight:800;line-height:.9;letter-spacing:-.04em;color:#9ab6ff">
+        {{ "%.0f"|format(month_revenue) }}
+        <span style="font-size:.9rem;font-weight:600"> {{ currency }}</span>
+      </div>
+      <div style="font-size:.65rem;color:var(--steel);margin-top:6px">
+        ربح الشهر: <span style="color:#7ec8a0;font-weight:700">{{ "%.2f"|format(month_profit) }} {{ currency }}</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="hero-grid">
+    <div class="hero-cell">
+      <span class="hero-cell-label">إيرادات اليوم</span>
+      <span class="hero-cell-value" style="color:var(--signal)">{{ "%.2f"|format(today_revenue) }}</span>
+    </div>
+    <div class="hero-cell">
+      <span class="hero-cell-label">تكلفة اليوم</span>
+      <span class="hero-cell-value" style="color:var(--steel)">{{ "%.2f"|format(today_cost) }}</span>
+    </div>
+    <div class="hero-cell">
+      <span class="hero-cell-label">ربح اليوم</span>
+      <span class="hero-cell-value" style="color:{% if today_profit >= 0 %}#7ec8a0{% else %}#f09090{% endif %}">
+        {{ "%.2f"|format(today_profit) }}
+      </span>
+    </div>
+    <div class="hero-cell">
+      <span class="hero-cell-label">إيرادات الشهر</span>
+      <span class="hero-cell-value" style="color:#9ab6ff">{{ "%.2f"|format(month_revenue) }}</span>
+    </div>
+    <div class="hero-cell">
+      <span class="hero-cell-label">تكلفة الشهر</span>
+      <span class="hero-cell-value" style="color:var(--steel)">{{ "%.2f"|format(month_cost) }}</span>
+    </div>
+    <div class="hero-cell">
+      <span class="hero-cell-label">ربح الشهر</span>
+      <span class="hero-cell-value" style="color:#7ec8a0">{{ "%.2f"|format(month_profit) }}</span>
+    </div>
+  </div>
+</div>
+
+<!-- Date range filter -->
+<div class="panel" style="margin-bottom:20px">
+  <form method="GET" action="{{ url_for('profits') }}">
+    <div class="filter-bar" style="flex-wrap:wrap;gap:10px">
+
+      <div class="date-shortcuts">
+        <span class="text-xs text-muted fw-6">فترة سريعة:</span>
+        <a href="{{ url_for('profits', date_from=today_str, date_to=today_str) }}"
+           class="btn btn-secondary btn-sm {% if df_str==today_str and dt_str==today_str %}btn-dark{% endif %}">اليوم</a>
+        <a href="{{ url_for('profits', date_from=month_start, date_to=today_str) }}"
+           class="btn btn-secondary btn-sm {% if df_str==month_start and dt_str==today_str %}btn-dark{% endif %}">هذا الشهر</a>
+        <a href="{{ url_for('profits', date_from=year_start, date_to=today_str) }}"
+           class="btn btn-secondary btn-sm {% if df_str==year_start %}btn-dark{% endif %}">هذا العام</a>
+        <a href="{{ url_for('profits', date_from=lm_start, date_to=lm_end) }}"
+           class="btn btn-secondary btn-sm">الشهر الماضي</a>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-right:auto">
+        <input class="form-control" type="date" name="date_from" value="{{ df_str }}" style="width:160px"/>
+        <span class="text-xs text-muted">إلى</span>
+        <input class="form-control" type="date" name="date_to"   value="{{ dt_str }}" style="width:160px"/>
+        <button class="btn btn-dark btn-sm" type="submit">
+          <svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg>
+          عرض
+        </button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- Range KPI -->
+<div class="profits-kpi-2">
+  <div class="stat-card">
+    <div class="stat-card-accent" style="background:var(--signal)"></div>
+    <span class="stat-card-label">الإيرادات (الفترة)</span>
+    <span class="stat-card-value stat-signal">{{ "%.2f"|format(range_revenue) }}</span>
+    <span class="stat-card-sub">{{ currency }}</span>
+  </div>
+  <div class="stat-card">
+    <div class="stat-card-accent" style="background:var(--danger)"></div>
+    <span class="stat-card-label">التكلفة (الفترة)</span>
+    <span class="stat-card-value stat-danger">{{ "%.2f"|format(range_cost) }}</span>
+    <span class="stat-card-sub">{{ currency }}</span>
+  </div>
+  <div class="stat-card">
+    <div class="stat-card-accent" style="background:var(--success)"></div>
+    <span class="stat-card-label">الربح الصافي (الفترة)</span>
+    <span class="stat-card-value {% if range_profit >= 0 %}stat-success{% else %}stat-danger{% endif %}">
+      {{ "%.2f"|format(range_profit) }}
+    </span>
+    <span class="stat-card-sub">
+      {{ currency }}
+      {% if range_revenue > 0 %}
+      &nbsp;·&nbsp; هامش {{ "%.1f"|format(range_profit / range_revenue * 100) }}%
+      {% endif %}
+    </span>
+  </div>
+</div>
+
+<!-- Main layout -->
+<div class="profits-layout">
+
+  <!-- LEFT: Sales table -->
+  <div>
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">فواتير الفترة</span>
+        <span class="panel-count">{{ range_sales.total }} فاتورة</span>
+        {% if range_discount > 0 %}
+        <span class="badge badge-warning no-dot" style="margin-right:8px">
+          خصم: {{ "%.2f"|format(range_discount) }} {{ currency }}
+        </span>
+        {% endif %}
+      </div>
+
+      {% if range_sales.items %}
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>رقم الفاتورة</th>
+              <th>الزبون</th>
+              <th>الإيراد</th>
+              <th>التكلفة</th>
+              <th>الربح</th>
+              <th>الهامش</th>
+              <th>التاريخ</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in range_sales.items %}
+            {% set margin = (s.profit / s.total * 100) if s.total > 0 else 0 %}
+            <tr>
+              <td>
+                <a href="{{ url_for('sales_detail', sid=s.id) }}"
+                   style="font-family:var(--display);font-size:.88rem;font-weight:700;color:var(--ink);text-decoration:none">
+                  {{ s.invoice_no }}
+                </a>
+                {% if s.sale_type == 'oil_change' %}
+                <span class="badge badge-success no-dot" style="margin-right:4px;font-size:.58rem">زيت</span>
+                {% endif %}
+              </td>
+              <td class="td-strong text-sm">{{ s.customer_name }}</td>
+              <td>
+                <span class="td-num text-signal" style="font-size:.9rem">{{ "%.2f"|format(s.total) }}</span>
+              </td>
+              <td class="text-sm text-muted">{{ "%.2f"|format(s.cost) }}</td>
+              <td>
+                <span class="td-num {% if s.profit >= 0 %}text-success{% else %}text-danger{% endif %}" style="font-size:.9rem">
+                  {{ "%.2f"|format(s.profit) }}
+                </span>
+              </td>
+              <td>
+                <span class="text-xs {% if margin >= 20 %}text-success{% elif margin >= 10 %}text-warning{% else %}text-danger{% endif %}">
+                  {{ "%.1f"|format(margin) }}%
+                </span>
+              </td>
+              <td class="td-muted text-xs nowrap">
+                {{ s.sale_date.strftime('%d/%m/%Y') }}<br>
+                <span style="font-size:.58rem">{{ s.sale_date.strftime('%H:%M') }}</span>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      {% if range_sales.pages > 1 %}
+      <div class="pagination">
+        <a href="{{ url_for('profits', rpage=range_sales.prev_num, date_from=df_str, date_to=dt_str) }}"
+           class="page-link {% if not range_sales.has_prev %}disabled{% endif %}">
+          <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-linecap:round;stroke-width:2">
+            <polyline points="9 18 15 12 9 6"/>
+          </svg>
+        </a>
+        {% for p in range_sales.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+          {% if p %}
+          <a href="{{ url_for('profits', rpage=p, date_from=df_str, date_to=dt_str) }}"
+             class="page-link {% if p == range_sales.page %}active{% endif %}">{{ p }}</a>
+          {% else %}
+          <span class="page-link disabled">…</span>
+          {% endif %}
+        {% endfor %}
+        <a href="{{ url_for('profits', rpage=range_sales.next_num, date_from=df_str, date_to=dt_str) }}"
+           class="page-link {% if not range_sales.has_next %}disabled{% endif %}">
+          <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-linecap:round;stroke-width:2">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+        </a>
+        <span class="text-xs text-muted" style="margin-right:8px">
+          {{ range_sales.total }} فاتورة · صفحة {{ range_sales.page }} من {{ range_sales.pages }}
+        </span>
+      </div>
+      {% endif %}
+
+      {% else %}
+      <div class="panel-body">
+        <div class="empty-state">
+          <svg viewBox="0 0 24 24"><path d="M3 17l4-4 4 4 4-5 4 3"/><path d="M3 21h18"/></svg>
+          <div class="empty-state-title">لا توجد فواتير في هذه الفترة</div>
+          <div class="empty-state-sub">اختر فترة زمنية مختلفة</div>
+        </div>
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+
+  <!-- RIGHT: Top products -->
+  <div>
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">أعلى المنتجات ربحاً</span>
+        <span class="panel-count">الفترة المحددة</span>
+      </div>
+      <div class="panel-body-flush">
+        {% if top_products %}
+        {% set max_profit = top_products[0].total_profit if top_products else 1 %}
+        {% for p in top_products %}
+        <div style="padding:12px 18px;border-bottom:1px solid var(--line-light)">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:4px">
+            <div class="text-sm fw-6" style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+              {{ loop.index }}. {{ p.name }}
+            </div>
+            <span class="text-xs text-muted nowrap">× {{ "%.0f"|format(p.total_qty) }}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:6px">
+            <div class="top-prod-bar" style="flex:1">
+              <div class="top-prod-fill"
+                   style="width:{{ [(p.total_profit / max_profit * 100)|int, 0]|max }}%">
+              </div>
+            </div>
+            <span class="text-xs text-success fw-6 nowrap">
+              {{ "%.2f"|format(p.total_profit) }} {{ currency }}
+            </span>
+          </div>
+          <div style="font-size:.6rem;color:var(--muted);margin-top:3px">
+            إيراد: {{ "%.2f"|format(p.total_revenue) }} {{ currency }}
+          </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div style="padding:32px 16px;text-align:center;color:var(--muted);font-size:.76rem">
+          <svg viewBox="0 0 24 24" style="width:36px;height:36px;fill:none;stroke:var(--steel);stroke-linecap:round;stroke-width:1.5;margin:0 auto 10px;opacity:.5">
+            <path d="M3 17l4-4 4 4 4-5 4 3"/>
+          </svg>
+          لا توجد بيانات للفترة المحددة
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+</div><!-- /layout -->
+
+{% endblock %}

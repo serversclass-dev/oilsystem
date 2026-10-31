@@ -1,0 +1,212 @@
+{% extends 'base.html' %}
+
+{% block title %}سجل تعديلات المخزون — {{ settings_get('shop_name','RUN X') }}{% endblock %}
+
+{% block extra_head %}
+<style>
+.diff-pos { color: var(--success); font-weight: 700; font-family: var(--display); font-size: .95rem; }
+.diff-neg { color: var(--danger);  font-weight: 700; font-family: var(--display); font-size: .95rem; }
+.diff-zero{ color: var(--muted);   font-weight: 600; font-family: var(--display); font-size: .95rem; }
+
+.session-tag {
+  font-family: var(--body);
+  font-size: .6rem;
+  font-weight: 600;
+  color: var(--instrument);
+  background: var(--info-bg);
+  padding: 2px 8px;
+  border-radius: 10px;
+  cursor: pointer;
+  text-decoration: none;
+}
+.session-tag:hover { background: rgba(68,120,255,.18); }
+</style>
+{% endblock %}
+
+{% block topbar_pre %}المخزون{% endblock %}
+{% block topbar_title %}سجل التعديلات{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('inventory') }}" class="btn btn-secondary">
+  <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+  الجرد
+</a>
+<a href="{{ url_for('inventory_bulk_count') }}" class="btn btn-primary">
+  <svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12l2 2 4-4"/></svg>
+  جرد شامل
+</a>
+{% endblock %}
+
+{% block content %}
+
+<div class="panel">
+
+  <!-- Filter bar -->
+  <form method="GET" action="{{ url_for('inventory_adjustments') }}">
+    <div class="filter-bar">
+
+      <div class="search-bar" style="max-width:260px">
+        <svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg>
+        <input class="form-control" type="search" name="q" value="{{ search }}"
+               placeholder="بحث باسم المنتج…"/>
+      </div>
+
+      {% if session %}
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="text-xs text-muted">جلسة:</span>
+        <span class="session-tag">{{ session }}</span>
+        <a href="{{ url_for('inventory_adjustments', q=search) }}" class="btn btn-secondary btn-sm">
+          <svg viewBox="0 0 24 24" style="width:12px;height:12px;fill:none;stroke:currentColor;stroke-linecap:round;stroke-width:2">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </a>
+      </div>
+      {% endif %}
+
+      <button class="btn btn-dark btn-sm" type="submit">
+        <svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg>
+        بحث
+      </button>
+
+      {% if search %}
+      <a href="{{ url_for('inventory_adjustments') }}" class="btn btn-secondary btn-sm">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        مسح
+      </a>
+      {% endif %}
+
+      <span class="text-xs text-muted" style="margin-right:auto">
+        {{ adjs.total }} تعديل
+      </span>
+
+    </div>
+  </form>
+
+  <!-- Table -->
+  {% if adjs.items %}
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>المنتج</th>
+          <th style="text-align:center">الكمية القديمة</th>
+          <th style="text-align:center">الكمية الجديدة</th>
+          <th style="text-align:center">الفرق</th>
+          <th>السبب</th>
+          <th>المستخدم</th>
+          <th>التاريخ</th>
+          <th>الجلسة</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in adjs.items %}
+        <tr>
+          <td class="td-strong">
+            {{ a.product.name if a.product else '—' }}
+            {% if a.product %}
+            <div class="text-xs text-muted">{{ a.product.unit }}</div>
+            {% endif %}
+          </td>
+          <td style="text-align:center">
+            <span class="td-num" style="font-size:.85rem">{{ a.old_qty }}</span>
+          </td>
+          <td style="text-align:center">
+            <span class="td-num" style="font-size:.85rem">{{ a.new_qty }}</span>
+          </td>
+          <td style="text-align:center">
+            {% if a.difference > 0 %}
+            <span class="diff-pos">+{{ a.difference }}</span>
+            {% elif a.difference < 0 %}
+            <span class="diff-neg">{{ a.difference }}</span>
+            {% else %}
+            <span class="diff-zero">±0</span>
+            {% endif %}
+          </td>
+          <td>
+            <span class="badge badge-muted no-dot" style="font-size:.65rem">
+              {{ a.reason or 'جرد' }}
+            </span>
+          </td>
+          <td class="td-muted text-xs">
+            {{ a.user.full_name or a.user.username if a.user else '—' }}
+          </td>
+          <td class="td-muted text-xs nowrap">
+            {{ a.adj_date.strftime('%Y/%m/%d') }}<br>
+            <span style="font-size:.58rem">{{ a.adj_date.strftime('%H:%M') }}</span>
+          </td>
+          <td>
+            {% if a.session_id %}
+            <a href="{{ url_for('inventory_adjustments', session=a.session_id) }}"
+               class="session-tag">
+              {{ a.session_id }}
+            </a>
+            {% else %}
+            <span class="td-muted text-xs">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  {% if adjs.pages > 1 %}
+  <div class="pagination">
+    <a href="{{ url_for('inventory_adjustments', page=adjs.prev_num, q=search, session=session) }}"
+       class="page-link {% if not adjs.has_prev %}disabled{% endif %}">
+      <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-linecap:round;stroke-width:2">
+        <polyline points="9 18 15 12 9 6"/>
+      </svg>
+    </a>
+
+    {% for p in adjs.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+      {% if p %}
+      <a href="{{ url_for('inventory_adjustments', page=p, q=search, session=session) }}"
+         class="page-link {% if p == adjs.page %}active{% endif %}">{{ p }}</a>
+      {% else %}
+      <span class="page-link disabled">…</span>
+      {% endif %}
+    {% endfor %}
+
+    <a href="{{ url_for('inventory_adjustments', page=adjs.next_num, q=search, session=session) }}"
+       class="page-link {% if not adjs.has_next %}disabled{% endif %}">
+      <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-linecap:round;stroke-width:2">
+        <polyline points="15 18 9 12 15 6"/>
+      </svg>
+    </a>
+
+    <span class="text-xs text-muted" style="margin-right:8px">
+      {{ adjs.total }} تعديل · صفحة {{ adjs.page }} من {{ adjs.pages }}
+    </span>
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div class="panel-body">
+    <div class="empty-state">
+      <svg viewBox="0 0 24 24">
+        <path d="M12 20h9"/>
+        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+      </svg>
+      <div class="empty-state-title">لا توجد تعديلات</div>
+      <div class="empty-state-sub">
+        {% if search %}
+        لا توجد نتائج مطابقة للبحث
+        {% else %}
+        لم يتم إجراء أي تعديلات على المخزون بعد
+        {% endif %}
+      </div>
+      {% if not search %}
+      <a href="{{ url_for('inventory') }}" class="btn btn-primary btn-sm">
+        <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+        العودة للجرد
+      </a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+
+{% endblock %}

@@ -1,0 +1,243 @@
+{% extends 'base.html' %}
+
+{% block title %}سجل العمليات — {{ settings_get('shop_name','RUN X') }}{% endblock %}
+
+{% block extra_head %}
+<style>
+/* Action badge colors */
+.action-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 9px;
+  border-radius: 20px;
+  font-size: .6rem;
+  font-weight: 700;
+  white-space: nowrap;
+  font-family: var(--body);
+}
+.act-login          { background: rgba(22,131,95,.1);  color: var(--success); }
+.act-logout         { background: rgba(168,173,179,.15); color: var(--muted); }
+.act-login_fail     { background: rgba(199,61,61,.1);  color: var(--danger); }
+.act-sale_create    { background: rgba(68,120,255,.1); color: var(--instrument); }
+.act-sale_delete    { background: rgba(199,61,61,.1);  color: var(--danger); }
+.act-product_create { background: rgba(22,131,95,.1);  color: var(--success); }
+.act-product_delete { background: rgba(199,61,61,.1);  color: var(--danger); }
+.act-price_change   { background: rgba(181,106,0,.1);  color: var(--warning); }
+.act-stock_adjust   { background: rgba(68,120,255,.1); color: var(--instrument); }
+.act-bulk_count     { background: rgba(68,120,255,.1); color: var(--instrument); }
+.act-oil_change_create { background: rgba(22,131,95,.1); color: var(--success); }
+.act-oil_change_edit   { background: rgba(181,106,0,.1); color: var(--warning); }
+.act-oil_change_delete { background: rgba(199,61,61,.1); color: var(--danger); }
+.act-password_change   { background: rgba(255,92,53,.1); color: var(--signal); }
+.act-settings_update   { background: rgba(181,106,0,.1); color: var(--warning); }
+.act-user_create    { background: rgba(22,131,95,.1);  color: var(--success); }
+.act-user_edit      { background: rgba(181,106,0,.1);  color: var(--warning); }
+.act-user_toggle    { background: rgba(199,61,61,.1);  color: var(--danger); }
+.act-default        { background: rgba(23,25,27,.07);  color: var(--muted); }
+
+/* IP badge */
+.ip-badge {
+  font-family: monospace;
+  font-size: .62rem;
+  color: var(--muted);
+  background: rgba(23,25,27,.06);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+/* Timeline dot */
+.tl-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--line-light);
+  flex-shrink: 0;
+  margin-top: 6px;
+  border: 1.5px solid var(--line-light);
+}
+</style>
+{% endblock %}
+
+{% block topbar_pre %}الإدارة{% endblock %}
+{% block topbar_title %}سجل العمليات{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('settings') }}" class="btn btn-secondary">
+  <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+  الإعدادات
+</a>
+{% endblock %}
+
+{% block content %}
+
+<div class="panel">
+
+  <!-- Filter bar -->
+  <form method="GET" action="{{ url_for('audit_log') }}">
+    <div class="filter-bar" style="flex-wrap:wrap;gap:10px">
+
+      <div class="search-bar" style="max-width:260px">
+        <svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg>
+        <input class="form-control" type="search" name="q" value="{{ search }}"
+               placeholder="بحث باسم المستخدم أو التفاصيل…"/>
+      </div>
+
+      <select class="form-control" name="action" style="width:200px"
+              onchange="this.form.submit()">
+        <option value="">كل العمليات</option>
+        {% for a in actions %}
+        <option value="{{ a }}" {% if action_f == a %}selected{% endif %}>{{ a }}</option>
+        {% endfor %}
+      </select>
+
+      <button class="btn btn-dark btn-sm" type="submit">
+        <svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg>
+        بحث
+      </button>
+
+      {% if search or action_f %}
+      <a href="{{ url_for('audit_log') }}" class="btn btn-secondary btn-sm">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        مسح
+      </a>
+      {% endif %}
+
+      <span class="text-xs text-muted" style="margin-right:auto">
+        {{ logs.total }} سجل
+      </span>
+
+    </div>
+  </form>
+
+  <!-- Logs table -->
+  {% if logs.items %}
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>العملية</th>
+          <th>المستخدم</th>
+          <th>الكيان</th>
+          <th>التفاصيل</th>
+          <th>عنوان IP</th>
+          <th>التاريخ والوقت</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in logs.items %}
+        {% set act_class = 'act-' + log.action | replace(' ','_') %}
+        <tr>
+          <td class="td-muted text-xs">{{ log.id }}</td>
+          <td>
+            <span class="action-badge {{ act_class }} act-default">
+              {{ log.action }}
+            </span>
+          </td>
+          <td>
+            {% if log.user %}
+            <div style="display:flex;align-items:center;gap:7px">
+              <div style="width:26px;height:26px;border-radius:50%;background:var(--asphalt);
+                          color:var(--signal);display:flex;align-items:center;justify-content:center;
+                          font-family:var(--display);font-size:.75rem;font-weight:700;flex-shrink:0">
+                {{ (log.user.full_name[0] if log.user.full_name else log.user.username[0])|upper }}
+              </div>
+              <div>
+                <div class="text-sm fw-6">{{ log.user.full_name or log.user.username }}</div>
+                <div class="text-xs text-muted">@{{ log.user.username }}</div>
+              </div>
+            </div>
+            {% else %}
+            <span class="td-muted text-xs">—</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if log.entity %}
+            <div class="text-sm fw-6">{{ log.entity }}</div>
+            {% if log.entity_id %}
+            <div class="text-xs text-muted">#{{ log.entity_id }}</div>
+            {% endif %}
+            {% else %}
+            <span class="td-muted text-xs">—</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if log.detail %}
+            <div class="text-xs" style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted)"
+                 title="{{ log.detail }}">
+              {{ log.detail }}
+            </div>
+            {% else %}
+            <span class="td-muted text-xs">—</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if log.ip %}
+            <span class="ip-badge">{{ log.ip }}</span>
+            {% else %}
+            <span class="td-muted text-xs">—</span>
+            {% endif %}
+          </td>
+          <td class="td-muted text-xs nowrap">
+            {{ log.created_at.strftime('%Y/%m/%d') }}<br>
+            <span style="font-size:.58rem">{{ log.created_at.strftime('%H:%M:%S') }}</span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  {% if logs.pages > 1 %}
+  <div class="pagination">
+    <a href="{{ url_for('audit_log', page=logs.prev_num, q=search, action=action_f) }}"
+       class="page-link {% if not logs.has_prev %}disabled{% endif %}">
+      <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-linecap:round;stroke-width:2">
+        <polyline points="9 18 15 12 9 6"/>
+      </svg>
+    </a>
+
+    {% for p in logs.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+      {% if p %}
+      <a href="{{ url_for('audit_log', page=p, q=search, action=action_f) }}"
+         class="page-link {% if p == logs.page %}active{% endif %}">{{ p }}</a>
+      {% else %}
+      <span class="page-link disabled">…</span>
+      {% endif %}
+    {% endfor %}
+
+    <a href="{{ url_for('audit_log', page=logs.next_num, q=search, action=action_f) }}"
+       class="page-link {% if not logs.has_next %}disabled{% endif %}">
+      <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-linecap:round;stroke-width:2">
+        <polyline points="15 18 9 12 15 6"/>
+      </svg>
+    </a>
+
+    <span class="text-xs text-muted" style="margin-right:8px">
+      {{ logs.total }} سجل · صفحة {{ logs.page }} من {{ logs.pages }}
+    </span>
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div class="panel-body">
+    <div class="empty-state">
+      <svg viewBox="0 0 24 24">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      </svg>
+      <div class="empty-state-title">لا توجد سجلات</div>
+      <div class="empty-state-sub">
+        {% if search or action_f %}
+        لا توجد نتائج مطابقة — جرّب تغيير الفلتر
+        {% else %}
+        لم تُسجَّل أي عمليات بعد
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+
+{% endblock %}

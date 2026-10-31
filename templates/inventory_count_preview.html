@@ -1,0 +1,251 @@
+{% extends 'base.html' %}
+
+{% block title %}معاينة الجرد — {{ settings_get('shop_name','RUN X') }}{% endblock %}
+
+{% block extra_head %}
+<style>
+.preview-kpi {
+  display: grid;
+  grid-template-columns: repeat(4,1fr);
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.diff-arrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--display);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.old-qty {
+  font-size: .78rem;
+  color: var(--muted);
+  text-decoration: line-through;
+}
+.new-qty {
+  font-family: var(--display);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+@media (max-width: 700px) {
+  .preview-kpi { grid-template-columns: repeat(2,1fr); }
+}
+</style>
+{% endblock %}
+
+{% block topbar_pre %}المخزون{% endblock %}
+{% block topbar_title %}معاينة الجرد{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('inventory_bulk_count') }}" class="btn btn-secondary">
+  <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+  العودة للجرد
+</a>
+{% endblock %}
+
+{% block content %}
+
+{% if diffs %}
+
+<!-- Summary KPIs -->
+{% set total_changed = diffs|length %}
+{% set total_added   = diffs|selectattr('diff','gt',0)|list|length %}
+{% set total_removed = diffs|selectattr('diff','lt',0)|list|length %}
+{% set total_zero    = diffs|selectattr('diff','eq',0)|list|length %}
+
+<div class="preview-kpi">
+  <div class="stat-card">
+    <div class="stat-card-accent" style="background:var(--instrument)"></div>
+    <span class="stat-card-label">إجمالي المنتجات المتأثرة</span>
+    <span class="stat-card-value stat-instrument">{{ total_changed }}</span>
+    <span class="stat-card-sub">منتج في هذه الجلسة</span>
+  </div>
+  <div class="stat-card">
+    <div class="stat-card-accent" style="background:var(--success)"></div>
+    <span class="stat-card-label">زيادة في الكمية</span>
+    <span class="stat-card-value stat-success">{{ total_added }}</span>
+    <span class="stat-card-sub">منتج ارتفعت كميته</span>
+  </div>
+  <div class="stat-card">
+    <div class="stat-card-accent" style="background:var(--danger)"></div>
+    <span class="stat-card-label">نقص في الكمية</span>
+    <span class="stat-card-value stat-danger">{{ total_removed }}</span>
+    <span class="stat-card-sub">منتج انخفضت كميته</span>
+  </div>
+  <div class="stat-card">
+    <div class="stat-card-accent" style="background:var(--muted)"></div>
+    <span class="stat-card-label">بدون تغيير</span>
+    <span class="stat-card-value" style="color:var(--muted)">{{ total_zero }}</span>
+    <span class="stat-card-sub">نفس الكمية السابقة</span>
+  </div>
+</div>
+
+<!-- Alert -->
+<div class="alert alert-warning" style="margin-bottom:18px">
+  <svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+  <span>
+    راجع الفروق أدناه بعناية. بعد الاعتماد لا يمكن التراجع تلقائياً — سيتم تسجيل جميع التغييرات في سجل التعديلات.
+  </span>
+</div>
+
+<!-- Diffs table -->
+<div class="panel" style="margin-bottom:20px">
+  <div class="panel-header">
+    <span class="panel-title">تفاصيل الفروق</span>
+    <span class="panel-count">{{ diffs|length }} منتج</span>
+  </div>
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>المنتج</th>
+          <th>الوحدة</th>
+          <th style="text-align:center">الكمية القديمة</th>
+          <th style="text-align:center">الكمية الجديدة</th>
+          <th style="text-align:center">الفرق</th>
+          <th>الحالة</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in diffs %}
+        <tr>
+          <td class="td-muted text-xs">{{ loop.index }}</td>
+          <td class="td-strong">{{ d.name }}</td>
+          <td class="td-muted text-xs">{{ d.unit }}</td>
+          <td style="text-align:center">
+            <span class="old-qty">{{ d.old_qty }}</span>
+          </td>
+          <td style="text-align:center">
+            <span class="new-qty {% if d.diff > 0 %}text-success{% elif d.diff < 0 %}text-danger{% endif %}">
+              {{ d.new_qty }}
+            </span>
+          </td>
+          <td style="text-align:center">
+            {% if d.diff > 0 %}
+            <span class="diff-arrow text-success">
+              <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-linecap:round;stroke-width:2.5">
+                <line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/>
+              </svg>
+              +{{ d.diff }}
+            </span>
+            {% elif d.diff < 0 %}
+            <span class="diff-arrow text-danger">
+              <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-linecap:round;stroke-width:2.5">
+                <line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/>
+              </svg>
+              {{ d.diff }}
+            </span>
+            {% else %}
+            <span style="color:var(--muted);font-size:.78rem">±0</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if d.diff > 0 %}
+            <span class="badge badge-success">زيادة</span>
+            {% elif d.diff < 0 %}
+            <span class="badge badge-danger">نقص</span>
+            {% else %}
+            <span class="badge badge-muted">بدون تغيير</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Action buttons -->
+<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+  <button type="button" class="btn btn-primary btn-lg" onclick="showModal('confirm-modal')">
+    <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+    اعتماد الجرد ({{ diffs|length }} منتج)
+  </button>
+  <a href="{{ url_for('inventory_bulk_count') }}" class="btn btn-secondary btn-lg">
+    <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+    العودة والتعديل
+  </a>
+</div>
+
+<!-- Hidden commit form -->
+<form method="POST" action="{{ url_for('inventory_bulk_count') }}" id="commit-form" style="display:none">
+  <input type="hidden" name="action" value="commit">
+  {% for d in diffs %}
+  <input type="hidden" name="items[{{ loop.index0 }}][product_id]" value="{{ d.product_id }}">
+  <input type="hidden" name="items[{{ loop.index0 }}][new_qty]"    value="{{ d.new_qty }}">
+  {% endfor %}
+</form>
+
+{% else %}
+
+<!-- Empty state -->
+<div class="panel">
+  <div class="panel-body">
+    <div class="empty-state">
+      <svg viewBox="0 0 24 24">
+        <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
+        <rect x="9" y="3" width="6" height="4" rx="1"/>
+        <path d="M9 12l2 2 4-4"/>
+      </svg>
+      <div class="empty-state-title">لا توجد تغييرات</div>
+      <div class="empty-state-sub">لم يتم إدخال أي كميات مختلفة عن الحالية</div>
+      <a href="{{ url_for('inventory_bulk_count') }}" class="btn btn-primary btn-sm">
+        <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+        العودة للجرد
+      </a>
+    </div>
+  </div>
+</div>
+
+{% endif %}
+
+<!-- Confirm modal -->
+<div class="modal-overlay" id="confirm-modal" onclick="if(event.target===this)hideModal('confirm-modal')">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title">تأكيد اعتماد الجرد</h3>
+      <button class="modal-close" onclick="hideModal('confirm-modal')" type="button">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:.82rem;color:var(--muted);line-height:1.7">
+        سيتم تحديث كميات
+        <strong style="color:var(--ink)">{{ diffs|length }}</strong>
+        منتج وتسجيل جميع التغييرات في سجل التعديلات.<br>
+        هذا الإجراء لا يمكن التراجع عنه تلقائياً.
+      </p>
+      <div class="alert alert-info" style="margin-top:12px;margin-bottom:0">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span>
+          زيادة: <strong class="text-success">{{ diffs|selectattr('diff','gt',0)|list|length }}</strong> ·
+          نقص: <strong class="text-danger">{{ diffs|selectattr('diff','lt',0)|list|length }}</strong>
+        </span>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" type="button" onclick="commitCount()">
+        <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        نعم، اعتماد الجرد
+      </button>
+      <button class="btn btn-secondary" onclick="hideModal('confirm-modal')" type="button">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function commitCount() {
+  hideModal('confirm-modal');
+  document.getElementById('commit-form').submit();
+}
+</script>
+{% endblock %}

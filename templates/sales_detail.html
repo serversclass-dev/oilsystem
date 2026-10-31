@@ -1,0 +1,574 @@
+{% extends 'base.html' %}
+
+{% block title %}فاتورة {{ sale.invoice_no }} — {{ settings_get('shop_name','RUN X') }}{% endblock %}
+
+{% block extra_head %}
+<style>
+.detail-layout {
+  display: grid;
+  grid-template-columns: minmax(0,1.6fr) minmax(0,.65fr);
+  gap: 18px;
+  align-items: start;
+}
+
+/* Invoice header */
+.inv-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 28px 30px 22px;
+  border-bottom: 2px solid var(--line-light);
+  gap: 20px;
+  background: linear-gradient(135deg, rgba(255,92,53,.03) 0%, transparent 60%);
+}
+.inv-brand-name {
+  font-family: var(--display);
+  font-size: 2.4rem; font-weight: 800;
+  letter-spacing: -.04em; line-height: 1; color: var(--ink);
+}
+.inv-brand-sub { font-size: .68rem; color: var(--muted); margin-top: 5px; }
+.inv-no-label  { font-size: .65rem; color: var(--muted); text-align: left; }
+.inv-no {
+  font-family: var(--display);
+  font-size: 2rem; font-weight: 800; color: var(--signal);
+  letter-spacing: -.03em; text-align: left; line-height: 1; margin-top: 3px;
+}
+
+/* Meta grid */
+.inv-meta {
+  display: grid; grid-template-columns: repeat(4,1fr);
+  padding: 20px 30px; border-bottom: 1px solid var(--line-light);
+  gap: 18px; background: rgba(242,240,234,.35);
+}
+.inv-meta-label {
+  font-size: .62rem; font-weight: 700; color: var(--muted);
+  margin-bottom: 5px; display: block; letter-spacing: .04em;
+}
+.inv-meta-value { font-size: .88rem; font-weight: 600; color: var(--ink); }
+
+/* Items table */
+.inv-table { width: 100%; border-collapse: collapse; }
+.inv-table th {
+  padding: 11px 18px; font-size: .62rem; font-weight: 700;
+  color: var(--muted); text-align: right;
+  background: rgba(242,240,234,.7); border-bottom: 1px solid var(--line-light);
+  letter-spacing: .04em;
+}
+.inv-table th:first-child { padding-right: 30px; }
+.inv-table th:last-child  { padding-left: 30px; text-align: left; }
+.inv-table td {
+  padding: 15px 18px; font-size: .82rem; color: var(--ink);
+  border-bottom: 1px solid var(--line-light); vertical-align: middle;
+}
+.inv-table td:first-child { padding-right: 30px; }
+.inv-table td:last-child  { padding-left: 30px; text-align: left; }
+.inv-table tbody tr:last-child td { border-bottom: none; }
+.inv-table tbody tr:hover { background: rgba(242,240,234,.45); }
+.inv-item-name { font-weight: 600; color: var(--ink); font-size: .85rem; }
+.inv-item-type { display: inline-block; margin-right: 6px; font-size: .6rem; padding: 2px 7px; border-radius: 10px; }
+.inv-num { font-family: var(--display); font-size: 1.05rem; font-weight: 700; }
+
+/* Totals footer */
+.inv-totals {
+  padding: 20px 28px; border-top: 1px solid var(--line-light);
+  display: flex; flex-direction: column; align-items: flex-end; gap: 10px;
+}
+.inv-total-row { display: flex; justify-content: space-between; width: 320px; font-size: .82rem; }
+.inv-total-row .lbl { color: var(--muted); }
+.inv-total-row .val { font-weight: 600; color: var(--ink); }
+.inv-grand-row {
+  display: flex; justify-content: space-between; width: 320px;
+  padding-top: 12px; border-top: 2.5px solid var(--ink); margin-top: 4px;
+}
+.inv-grand-lbl { font-family: var(--display); font-size: 1.3rem; font-weight: 700; }
+.inv-grand-val { font-family: var(--display); font-size: 1.8rem; font-weight: 800; color: var(--signal); letter-spacing: -.03em; }
+
+/* Info rows (sidebar) */
+.info-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 0; border-bottom: 1px solid var(--line-light); font-size: .78rem;
+}
+.info-row:last-child { border-bottom: none; }
+.info-row-label { color: var(--muted); }
+.info-row-value { font-weight: 600; color: var(--ink); text-align: left; }
+
+/* ─── PRINT STYLES ─── */
+@media print {
+  /* receipt 80mm default */
+  @page { size: 80mm auto; margin: 4mm; }
+
+  body * { visibility: hidden; }
+  .print-area, .print-area * { visibility: visible; }
+  .print-area { position: fixed; top: 0; left: 0; right: 0; width: 100%; }
+
+  .print-invoice {
+    width: 72mm;
+    font-family: 'Tajawal', sans-serif;
+    font-size: 11px;
+    direction: rtl;
+  }
+  .pi-header { text-align: center; padding-bottom: 6px; border-bottom: 1px dashed #555; margin-bottom: 6px; }
+  .pi-shop   { font-size: 14px; font-weight: 700; }
+  .pi-sub    { font-size: 10px; color: #555; }
+  .pi-inv-no { font-size: 16px; font-weight: 900; color: #000; }
+  .pi-meta   { font-size: 10px; margin-bottom: 6px; }
+  .pi-meta td { padding: 1px 3px; }
+
+  .pi-table  { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
+  .pi-table th { font-size: 10px; border-bottom: 1px solid #555; padding: 2px 3px; text-align: right; }
+  .pi-table td { font-size: 10px; padding: 2px 3px; border-bottom: 1px dotted #ccc; text-align: right; }
+  .pi-table .td-num { font-weight: 700; }
+
+  .pi-totals { border-top: 1px dashed #555; padding-top: 4px; font-size: 10px; }
+  .pi-total-row { display: flex; justify-content: space-between; padding: 1px 0; }
+  .pi-grand { font-size: 14px; font-weight: 900; border-top: 2px solid #000; padding-top: 3px; margin-top: 3px; display: flex; justify-content: space-between; }
+  .pi-footer { text-align: center; font-size: 10px; color: #555; margin-top: 8px; border-top: 1px dashed #555; padding-top: 4px; }
+}
+
+@media (max-width: 1000px) {
+  .detail-layout { grid-template-columns: 1fr; }
+  .inv-meta { grid-template-columns: repeat(2,1fr); }
+}
+@media (max-width: 560px) {
+  .inv-meta { grid-template-columns: 1fr 1fr; }
+  .inv-header { flex-direction: column; gap: 12px; }
+}
+</style>
+{% endblock %}
+
+{% block topbar_pre %}الفواتير{% endblock %}
+{% block topbar_title %}فاتورة {{ sale.invoice_no }}{% endblock %}
+
+{% block topbar_actions %}
+<button class="btn btn-secondary" onclick="printInvoice()">
+  <svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+  طباعة
+</button>
+
+{% if current_user.is_admin %}
+<button class="btn btn-danger" onclick="showModal('del-modal')">
+  <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+  حذف
+</button>
+{% endif %}
+
+<a href="{{ url_for('sales_list') }}" class="btn btn-secondary">
+  <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+  الفواتير
+</a>
+{% endblock %}
+
+{% block content %}
+
+<!-- ═══ PRINT AREA (hidden on screen, shown on print) ═══ -->
+<div class="print-area" style="display:none" id="print-area">
+  <div class="print-invoice pi-receipt">
+
+    <!-- Header -->
+    <div class="pi-header">
+      <div class="pi-shop">{{ settings_get('shop_name','RUN X') }}</div>
+      {% if settings_get('phone') %}
+      <div class="pi-sub">{{ settings_get('phone') }}</div>
+      {% endif %}
+      {% if settings_get('address') %}
+      <div class="pi-sub">{{ settings_get('address') }}</div>
+      {% endif %}
+      <div style="margin-top:4px">
+        <div class="pi-inv-no"># {{ sale.invoice_no }}</div>
+        {% if sale.sale_type == 'oil_change' %}
+        <div class="pi-sub">[ تغيير زيت ]</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Meta -->
+    <table class="pi-meta" width="100%">
+      <tr>
+        <td><strong>الزبون:</strong></td>
+        <td>{{ sale.customer_name }}</td>
+      </tr>
+      <tr>
+        <td><strong>التاريخ:</strong></td>
+        <td>{{ sale.sale_date.strftime('%Y/%m/%d') }}</td>
+      </tr>
+      <tr>
+        <td><strong>الوقت:</strong></td>
+        <td>{{ sale.sale_date.strftime('%H:%M') }}</td>
+      </tr>
+      {% if sale.user %}
+      <tr>
+        <td><strong>البائع:</strong></td>
+        <td>{{ sale.user.full_name or sale.user.username }}</td>
+      </tr>
+      {% endif %}
+    </table>
+
+    <!-- Items -->
+    <table class="pi-table">
+      <thead>
+        <tr>
+          <th>الصنف</th>
+          <th style="text-align:center">الكمية</th>
+          <th style="text-align:center">السعر</th>
+          <th style="text-align:left">الإجمالي</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in sale.items %}
+        <tr>
+          <td>{{ item.display_name }}</td>
+          <td class="td-num" style="text-align:center">{{ item.quantity }}</td>
+          <td class="td-num" style="text-align:center">{{ "%.2f"|format(item.unit_price) }}</td>
+          <td class="td-num" style="text-align:left">{{ "%.2f"|format(item.total) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <!-- Totals -->
+    <div class="pi-totals">
+      <div class="pi-total-row">
+        <span>المجموع الفرعي</span>
+        <span>{{ "%.2f"|format(sale.subtotal) }}</span>
+      </div>
+      {% if sale.discount > 0 %}
+      <div class="pi-total-row">
+        <span>الخصم</span>
+        <span>- {{ "%.2f"|format(sale.discount) }}</span>
+      </div>
+      {% endif %}
+      <div class="pi-grand">
+        <span>الصافي</span>
+        <span>{{ "%.2f"|format(sale.total) }} {{ currency }}</span>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="pi-footer">
+      {{ settings_get('invoice_footer','شكراً لزيارتكم') }}
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══ SCREEN VIEW ═══ -->
+<div class="detail-layout">
+
+  <!-- LEFT: Invoice -->
+  <div>
+    <div class="panel">
+
+      <div class="inv-header">
+        <div>
+          <div class="inv-brand-name">{{ settings_get('shop_name','RUN X') }}</div>
+          <div class="inv-brand-sub">
+            {% if settings_get('phone') %}{{ settings_get('phone') }} · {% endif %}
+            {{ settings_get('address','') }}
+          </div>
+        </div>
+        <div>
+          <div class="inv-no-label">رقم الفاتورة</div>
+          <div class="inv-no">{{ sale.invoice_no }}</div>
+        </div>
+      </div>
+
+      <div class="inv-meta">
+        <div>
+          <span class="inv-meta-label">الزبون</span>
+          <div class="inv-meta-value">{{ sale.customer_name }}</div>
+        </div>
+        <div>
+          <span class="inv-meta-label">التاريخ</span>
+          <div class="inv-meta-value">{{ sale.sale_date.strftime('%Y/%m/%d') }}</div>
+        </div>
+        <div>
+          <span class="inv-meta-label">الوقت</span>
+          <div class="inv-meta-value">{{ sale.sale_date.strftime('%H:%M') }}</div>
+        </div>
+        <div>
+          <span class="inv-meta-label">النوع</span>
+          <div class="inv-meta-value">
+            {% if sale.sale_type == 'oil_change' %}
+            <span class="badge badge-success">تغيير زيت</span>
+            {% else %}
+            <span class="badge badge-muted">بيع عادي</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Items -->
+      <div class="table-wrap">
+        <table class="inv-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>الصنف</th>
+              <th style="text-align:center">الكمية</th>
+              <th style="text-align:center">سعر الوحدة</th>
+              <th style="text-align:left">الإجمالي</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in sale.items %}
+            <tr>
+              <td class="td-muted text-xs">{{ loop.index }}</td>
+              <td>
+                <div class="inv-item-name">
+                  {% if item.item_type == 'service' %}
+                  <span class="inv-item-type badge badge-instrument no-dot">خدمة</span>
+                  {% endif %}
+                  {{ item.display_name }}
+                </div>
+              </td>
+              <td style="text-align:center">
+                <span class="inv-num">{{ item.quantity }}</span>
+                {% if item.product %}
+                <span class="text-xs text-muted"> {{ item.product.unit }}</span>
+                {% endif %}
+              </td>
+              <td style="text-align:center">
+                <span class="inv-num">{{ "%.2f"|format(item.unit_price) }}</span>
+                <span class="text-xs text-muted"> {{ currency }}</span>
+              </td>
+              <td>
+                <span class="inv-num text-signal">{{ "%.2f"|format(item.total) }}</span>
+                <span class="text-xs text-muted"> {{ currency }}</span>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Totals -->
+      <div class="inv-totals">
+        <div class="inv-total-row">
+          <span class="lbl">المجموع الفرعي</span>
+          <span class="val">{{ "%.2f"|format(sale.subtotal) }} {{ currency }}</span>
+        </div>
+        {% if sale.discount > 0 %}
+        <div class="inv-total-row">
+          <span class="lbl" style="color:var(--warning)">الخصم</span>
+          <span class="val" style="color:var(--warning)">- {{ "%.2f"|format(sale.discount) }} {{ currency }}</span>
+        </div>
+        {% endif %}
+        <div class="inv-grand-row">
+          <span class="inv-grand-lbl">الإجمالي</span>
+          <span class="inv-grand-val">{{ "%.2f"|format(sale.total) }} {{ currency }}</span>
+        </div>
+      </div>
+
+      {% if sale.notes %}
+      <div style="padding:14px 24px;border-top:1px solid var(--line-light)">
+        <span class="text-xs text-muted fw-6">ملاحظات: </span>
+        <span class="text-sm">{{ sale.notes }}</span>
+      </div>
+      {% endif %}
+
+      <div style="padding:12px 24px;border-top:1px solid var(--line-light);text-align:center;font-size:.65rem;color:var(--muted)">
+        {{ settings_get('invoice_footer','شكراً لزيارتكم') }}
+      </div>
+
+    </div>
+  </div>
+
+  <!-- RIGHT: sidebar info -->
+  <div style="display:flex;flex-direction:column;gap:14px">
+
+    <!-- Financial summary -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">ملخص مالي</span>
+      </div>
+      <div style="padding:4px 20px 8px">
+        <div class="info-row">
+          <span class="info-row-label">إجمالي الفاتورة</span>
+          <span class="info-row-value text-signal font-display" style="font-size:1.05rem">
+            {{ "%.2f"|format(sale.total) }} {{ currency }}
+          </span>
+        </div>
+        {% if sale.discount > 0 %}
+        <div class="info-row">
+          <span class="info-row-label">الخصم</span>
+          <span class="info-row-value text-warning">{{ "%.2f"|format(sale.discount) }} {{ currency }}</span>
+        </div>
+        {% endif %}
+        {% if current_user.is_admin %}
+        <div class="info-row">
+          <span class="info-row-label">التكلفة</span>
+          <span class="info-row-value">{{ "%.2f"|format(sale.cost) }} {{ currency }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-row-label">الربح الصافي</span>
+          <span class="info-row-value {% if sale.profit >= 0 %}text-success{% else %}text-danger{% endif %}" style="font-size:.95rem;font-family:var(--display);font-weight:700">
+            {{ "%.2f"|format(sale.profit) }} {{ currency }}
+          </span>
+        </div>
+        {% endif %}
+        <div class="info-row">
+          <span class="info-row-label">عدد الأصناف</span>
+          <span class="info-row-value">{{ sale.items|length }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sale info -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">معلومات الفاتورة</span>
+      </div>
+      <div style="padding:4px 20px 8px">
+        <div class="info-row">
+          <span class="info-row-label">رقم الفاتورة</span>
+          <span class="info-row-value" style="font-family:var(--display)">{{ sale.invoice_no }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-row-label">الزبون</span>
+          <span class="info-row-value">{{ sale.customer_name }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-row-label">التاريخ والوقت</span>
+          <span class="info-row-value" style="font-size:.72rem">{{ sale.sale_date.strftime('%Y/%m/%d — %H:%M') }}</span>
+        </div>
+        {% if sale.user %}
+        <div class="info-row">
+          <span class="info-row-label">المندوب</span>
+          <span class="info-row-value">{{ sale.user.full_name or sale.user.username }}</span>
+        </div>
+        {% endif %}
+        <div class="info-row">
+          <span class="info-row-label">النوع</span>
+          <span class="info-row-value">
+            {% if sale.sale_type == 'oil_change' %}
+            <span class="badge badge-success">تغيير زيت</span>
+            {% else %}
+            <span class="badge badge-muted">بيع عادي</span>
+            {% endif %}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Oil change link -->
+    {% if oil_change %}
+    <div class="panel" style="border-color:rgba(68,120,255,.25)">
+      <div class="panel-header" style="background:rgba(68,120,255,.05)">
+        <span class="panel-title" style="color:var(--instrument)">سجل تغيير الزيت</span>
+      </div>
+      <div style="padding:14px 20px">
+        <div class="info-row">
+          <span class="info-row-label">السيارة</span>
+          <span class="info-row-value"><span class="badge badge-instrument no-dot">{{ oil_change.car_plate }}</span></span>
+        </div>
+        <div class="info-row">
+          <span class="info-row-label">الزبون</span>
+          <span class="info-row-value">{{ oil_change.customer_name }}</span>
+        </div>
+        {% if oil_change.oil_type %}
+        <div class="info-row">
+          <span class="info-row-label">نوع الزيت</span>
+          <span class="info-row-value">{{ oil_change.oil_type }}</span>
+        </div>
+        {% endif %}
+        {% if oil_change.next_change_date %}
+        <div class="info-row">
+          <span class="info-row-label">موعد القادم</span>
+          <span class="info-row-value text-warning">{{ oil_change.next_change_date.strftime('%Y/%m/%d') }}</span>
+        </div>
+        {% endif %}
+        <div style="margin-top:10px">
+          <a href="{{ url_for('oil_change_detail', oid=oil_change.id) }}"
+             class="btn btn-instrument btn-sm" style="width:100%;justify-content:center">
+            <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            عرض سجل الزيت
+          </a>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Actions -->
+    <div class="panel">
+      <div class="panel-body" style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn btn-secondary" onclick="printInvoice()" style="justify-content:center">
+          <svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          طباعة الفاتورة (80mm)
+        </button>
+        <button class="btn btn-secondary" onclick="printA4()" style="justify-content:center">
+          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          طباعة A4
+        </button>
+        {% if not oil_change and sale.sale_type != 'oil_change' %}
+        <a href="{{ url_for('oil_change_new') }}" class="btn btn-secondary" style="justify-content:center">
+          <svg viewBox="0 0 24 24"><path d="M20 9V7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v2"/><path d="M9 22V12h6v10"/><path d="M2 10h20v2a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4v-2z"/></svg>
+          سجّل تغيير زيت
+        </a>
+        {% endif %}
+        {% if current_user.is_admin %}
+        <button class="btn btn-danger" onclick="showModal('del-modal')" style="justify-content:center">
+          <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+          حذف الفاتورة
+        </button>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Delete modal -->
+{% if current_user.is_admin %}
+<div class="modal-overlay" id="del-modal" onclick="if(event.target===this)hideModal('del-modal')">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title">حذف الفاتورة</h3>
+      <button class="modal-close" onclick="hideModal('del-modal')" type="button">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:.82rem;color:var(--muted);line-height:1.65">
+        هل أنت متأكد من حذف الفاتورة
+        <strong style="color:var(--ink)">{{ sale.invoice_no }}</strong> ؟<br>
+        سيتم إعادة جميع الكميات إلى المخزون تلقائياً.
+      </p>
+      <div class="alert alert-warning" style="margin-top:12px;margin-bottom:0">
+        <svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <span>هذا الإجراء لا يمكن التراجع عنه</span>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <form method="POST" action="{{ url_for('sales_delete', sid=sale.id) }}">
+        <button class="btn btn-danger" type="submit">
+          <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+          تأكيد الحذف
+        </button>
+      </form>
+      <button class="btn btn-secondary" onclick="hideModal('del-modal')" type="button">إلغاء</button>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function printInvoice() {
+  // 80mm receipt — open in modal iframe
+  openPrintModal('{{ url_for("print_invoice", sid=sale.id) }}?size=80mm', 'فاتورة {{ sale.invoice_no }}');
+}
+
+function printA4() {
+  openPrintModal('{{ url_for("print_invoice", sid=sale.id) }}', 'فاتورة A4 — {{ sale.invoice_no }}');
+}
+
+// Auto-print if coming from new sale
+{% if request.args.get('print') == '1' %}
+window.addEventListener('load', function() {
+  setTimeout(printInvoice, 400);
+});
+{% endif %}
+</script>
+{% endblock %}

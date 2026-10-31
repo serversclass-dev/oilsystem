@@ -1,0 +1,326 @@
+{% extends 'base.html' %}
+
+{% block title %}فاتورة طريق جديدة — {{ settings_get('shop_name','RUN X') }}{% endblock %}
+
+{% block extra_head %}
+<style>
+.road-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+.items-panel { background: var(--white); border: 1px solid var(--line-light); border-radius: var(--r4); overflow: hidden; }
+.items-panel-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px; border-bottom: 1px solid var(--line-light);
+  background: rgba(242,240,234,.5);
+}
+.items-panel-title { font-family: var(--display); font-size: 1.1rem; font-weight: 700; }
+
+.item-row {
+  display: grid;
+  grid-template-columns: 120px 1fr 90px 80px 36px;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line-light);
+  background: var(--white);
+  transition: background .1s;
+}
+.item-row:last-child { border-bottom: none; }
+.item-row:hover { background: rgba(242,240,234,.3); }
+
+.item-source-toggle {
+  display: flex;
+  border: 1px solid var(--line-light);
+  border-radius: var(--r2);
+  overflow: hidden;
+  height: 36px;
+}
+.item-source-toggle input[type=radio] { display: none; }
+.item-source-toggle label {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  font-size: .65rem; font-weight: 600; cursor: pointer;
+  transition: background .12s, color .12s;
+  color: var(--muted); padding: 0 6px; text-align: center; line-height: 1.2;
+}
+.item-source-toggle input[type=radio]:checked + label {
+  background: var(--asphalt); color: var(--white);
+}
+
+.inv-field, .manual-field { display: none; }
+.inv-field.show, .manual-field.show { display: block; }
+
+.remove-btn {
+  width: 32px; height: 32px; border-radius: var(--r2);
+  border: 1px solid rgba(199,61,61,.25);
+  background: transparent; color: var(--danger);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0; transition: background .12s;
+}
+.remove-btn:hover { background: var(--danger-bg); }
+.remove-btn svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+
+.add-item-btn {
+  display: flex; align-items: center; gap: 8px;
+  padding: 13px 18px; cursor: pointer;
+  color: var(--instrument); font-size: .78rem; font-weight: 600;
+  border-top: 1px dashed rgba(68,120,255,.3);
+  background: transparent; width: 100%; border-bottom: none; border-left: none; border-right: none;
+  transition: background .12s;
+}
+.add-item-btn:hover { background: var(--info-bg); }
+.add-item-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+
+.items-count-badge {
+  min-width: 22px; height: 22px; border-radius: 11px;
+  background: var(--signal); color: var(--white);
+  font-size: .6rem; font-weight: 700; display: grid; place-items: center;
+  font-family: var(--body);
+}
+
+.legend-row {
+  display: flex; gap: 16px; padding: 10px 18px;
+  border-top: 1px solid var(--line-light);
+  background: rgba(242,240,234,.4);
+  font-size: .62rem; color: var(--muted);
+}
+.legend-dot {
+  width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-left: 4px;
+}
+
+@media (max-width: 900px) {
+  .road-form-grid { grid-template-columns: 1fr; }
+  .item-row { grid-template-columns: 100px 1fr 80px 70px 32px; }
+}
+@media (max-width: 600px) {
+  .item-row { grid-template-columns: 1fr; gap: 6px; }
+}
+</style>
+{% endblock %}
+
+{% block topbar_pre %}فاتورة طريق{% endblock %}
+{% block topbar_title %}
+<svg style="width:22px;height:22px;fill:none;stroke:currentColor;stroke-linecap:round;stroke-width:2" viewBox="0 0 24 24">
+  <path d="M1 3h15v13H1z"/><path d="M16 8h4l3 3v5h-7V8z"/>
+  <circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>
+</svg>
+فاتورة طريق جديدة
+{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('road_invoice_list') }}" class="btn btn-secondary btn-sm">
+  <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+  رجوع
+</a>
+{% endblock %}
+
+{% block content %}
+<form method="POST" id="road-form">
+
+<div class="road-form-grid">
+
+  <!-- LEFT: Info panel -->
+  <div>
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">بيانات الشحنة</span>
+      </div>
+      <div class="panel-body" style="display:grid;gap:14px">
+
+        <div class="form-group">
+          <label class="form-label">اسم الزبون</label>
+          <input class="form-control" name="customer_name"
+                 placeholder="أدخل اسم الزبون / الجهة المستلمة" autocomplete="off">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">اسم السائق *</label>
+          <input class="form-control" name="driver_name" required
+                 placeholder="أدخل اسم السائق" autocomplete="off">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">الوجهة / المدينة *</label>
+          <input class="form-control" name="destination" required
+                 placeholder="مثال: مصراتة — سوق الجملة" autocomplete="off">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">ملاحظات</label>
+          <textarea class="form-control" name="notes" rows="3"
+                    placeholder="أي تفاصيل إضافية…"></textarea>
+        </div>
+
+        <hr class="divider">
+
+        <!-- Info notice -->
+        <div class="alert alert-info" style="margin:0">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span style="font-size:.74rem">
+            الأصناف من المخزون تُخصم تلقائياً عند الحفظ.
+            لا تظهر الأسعار في الفاتورة المطبوعة.
+          </span>
+        </div>
+
+        <!-- Actions -->
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button type="submit" class="btn btn-primary btn-lg" style="flex:1">
+            <svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            حفظ الفاتورة
+          </button>
+          <button type="submit" name="save_and_print" value="1" class="btn btn-dark btn-lg">
+            <svg viewBox="0 0 24 24"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+            حفظ وطباعة
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Items panel -->
+  <div>
+    <div class="items-panel">
+      <div class="items-panel-header">
+        <span class="items-panel-title">الأصناف</span>
+        <span class="items-count-badge" id="items-count">0</span>
+      </div>
+
+      <!-- Column headers (desktop) -->
+      <div style="display:grid;grid-template-columns:120px 1fr 90px 80px 36px;gap:8px;padding:7px 14px;border-bottom:1px solid var(--line-light);background:rgba(242,240,234,.6)">
+        <span style="font-size:.6rem;font-weight:600;color:var(--muted)">المصدر</span>
+        <span style="font-size:.6rem;font-weight:600;color:var(--muted)">الصنف</span>
+        <span style="font-size:.6rem;font-weight:600;color:var(--muted)">الكمية</span>
+        <span style="font-size:.6rem;font-weight:600;color:var(--muted)">الوحدة</span>
+        <span></span>
+      </div>
+
+      <div id="items-container"></div>
+
+      <button type="button" class="add-item-btn" onclick="addItem()">
+        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        إضافة صنف
+      </button>
+
+      <div class="legend-row">
+        <span><span class="legend-dot" style="background:var(--instrument)"></span>من المخزون</span>
+        <span><span class="legend-dot" style="background:var(--warning)"></span>خارج المخزون</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+</form>
+
+<!-- Product data for JS -->
+<script>
+const PRODUCTS = [
+  {% for p in products %}
+  { id: {{ p.id }}, name: {{ p.name|tojson }}, unit: {{ p.unit|tojson }}, qty: {{ p.quantity }} }{% if not loop.last %},{% endif %}
+  {% endfor %}
+];
+
+let itemIndex = 0;
+
+function buildProductOptions(selectedId) {
+  let html = '<option value="">— اختر منتجاً —</option>';
+  PRODUCTS.forEach(function(p) {
+    const sel = (p.id == selectedId) ? 'selected' : '';
+    html += `<option value="${p.id}" data-unit="${p.unit}" data-qty="${p.qty}" ${sel}>${p.name} (${p.qty} ${p.unit})</option>`;
+  });
+  return html;
+}
+
+function addItem(source) {
+  const idx = itemIndex++;
+  const src = source || 'inventory';
+  const container = document.getElementById('items-container');
+  const div = document.createElement('div');
+  div.className = 'item-row';
+  div.id = `item-row-${idx}`;
+  div.innerHTML = `
+    <div class="item-source-toggle">
+      <input type="radio" name="items[${idx}][source]" id="src-inv-${idx}" value="inventory"
+             ${src === 'inventory' ? 'checked' : ''} onchange="toggleSource(${idx})">
+      <label for="src-inv-${idx}" style="border-left:1px solid var(--line-light)">📦 مخزون</label>
+      <input type="radio" name="items[${idx}][source]" id="src-man-${idx}" value="manual"
+             ${src === 'manual' ? 'checked' : ''} onchange="toggleSource(${idx})">
+      <label for="src-man-${idx}">✏️ خارج</label>
+    </div>
+
+    <div>
+      <div class="inv-field ${src === 'inventory' ? 'show' : ''}" id="inv-field-${idx}">
+        <select class="form-control" style="height:36px;font-size:.78rem"
+                name="items[${idx}][product_id]"
+                onchange="onProductSelect(this, ${idx})">
+          ${buildProductOptions(null)}
+        </select>
+      </div>
+      <div class="manual-field ${src === 'manual' ? 'show' : ''}" id="man-field-${idx}">
+        <input class="form-control" style="height:36px;font-size:.78rem"
+               name="items[${idx}][description]"
+               placeholder="اسم الصنف…" autocomplete="off">
+      </div>
+    </div>
+
+    <input class="form-control" style="height:36px;font-size:.82rem;text-align:center"
+           type="number" min="0.1" step="0.1" value="1"
+           name="items[${idx}][quantity]">
+
+    <div id="unit-wrap-${idx}">
+      <input class="form-control" style="height:36px;font-size:.75rem;text-align:center"
+             name="items[${idx}][unit]" value="قطعة" placeholder="وحدة"
+             id="unit-input-${idx}">
+    </div>
+
+    <button type="button" class="remove-btn" onclick="removeItem(${idx})">
+      <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  `;
+  container.appendChild(div);
+  updateCount();
+}
+
+function toggleSource(idx) {
+  const isInv = document.getElementById(`src-inv-${idx}`).checked;
+  document.getElementById(`inv-field-${idx}`).className = 'inv-field ' + (isInv ? 'show' : '');
+  document.getElementById(`man-field-${idx}`).className = 'manual-field ' + (isInv ? '' : 'show');
+  if (!isInv) {
+    document.getElementById(`unit-input-${idx}`).value = 'قطعة';
+  }
+}
+
+function onProductSelect(sel, idx) {
+  const opt = sel.options[sel.selectedIndex];
+  if (opt && opt.dataset.unit) {
+    document.getElementById(`unit-input-${idx}`).value = opt.dataset.unit;
+  }
+}
+
+function removeItem(idx) {
+  const row = document.getElementById(`item-row-${idx}`);
+  if (row) row.remove();
+  updateCount();
+}
+
+function updateCount() {
+  const count = document.querySelectorAll('#items-container .item-row').length;
+  document.getElementById('items-count').textContent = count;
+}
+
+// Validate before submit
+document.getElementById('road-form').addEventListener('submit', function(e) {
+  const count = document.querySelectorAll('#items-container .item-row').length;
+  if (count === 0) {
+    e.preventDefault();
+    alert('يجب إضافة صنف واحد على الأقل');
+    return false;
+  }
+});
+
+// Start with one empty item
+addItem('inventory');
+</script>
+{% endblock %}

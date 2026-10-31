@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>تفعيل النظام | RUN X</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #06101b;
+  --bg-2: #081522;
+  --surface: #0c1a29;
+  --surface-2: #102337;
+  --surface-3: #142b40;
+  --line: #1d364b;
+  --line-light: rgba(142,177,198,.14);
+  --cyan: #19d7c2;
+  --cyan-hover: #28e4d0;
+  --cyan-soft: rgba(25,215,194,.09);
+  --cyan-border: rgba(25,215,194,.30);
+  --white: #edf5f8;
+  --text: #c2d1d9;
+  --muted: #71899b;
+  --faint: #465e70;
+  --danger: #ee7777;
+  --danger-soft: rgba(238,119,119,.09);
+  --danger-border: rgba(238,119,119,.28);
+  --shadow: rgba(0,0,0,.32);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{min-height:100%;background:var(--bg);}
+body{
+  min-height:100vh;overflow-x:hidden;
+  color:var(--white);font-family:"Cairo",sans-serif;-webkit-font-smoothing:antialiased;
+  background:
+    radial-gradient(circle at 70% 20%,rgba(25,215,194,.055),transparent 27rem),
+    radial-gradient(circle at 5% 90%,rgba(25,215,194,.025),transparent 22rem),
+    var(--bg);
+}
+body::before{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:
+    linear-gradient(rgba(25,215,194,.022) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(25,215,194,.022) 1px,transparent 1px);
+  background-size:56px 56px;
+  mask-image:linear-gradient(to bottom,black,transparent 85%);
+}
+button,input{font:inherit;}
+button,a,input{-webkit-tap-highlight-color:transparent;}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(--cyan);outline-offset:3px;}
+
+/* LAYOUT */
+.page{
+  position:relative;z-index:1;min-height:100vh;
+  display:grid;grid-template-columns:minmax(0,1fr) 390px;
+}
+
+/* MAIN */
+.main{
+  min-width:0;min-height:100vh;
+  display:flex;align-items:center;justify-content:center;
+  padding:70px 7vw;
+}
+.content{width:100%;max-width:590px;}
+
+/* BRAND */
+.brand{display:flex;align-items:center;gap:12px;margin-bottom:62px;}
+.brand-mark{
+  width:44px;height:44px;border-radius:5px;
+  background:var(--cyan);display:grid;place-items:center;
+  color:#031411;font-size:18px;font-weight:800;flex-shrink:0;
+  font-family:"Cairo",sans-serif;
+}
+.brand-name{color:var(--white);font-size:1rem;font-weight:800;letter-spacing:.18em;}
+.brand-name span{color:var(--cyan);}
+
+/* HERO */
+.hero{margin-bottom:42px;}
+.hero h1{
+  max-width:540px;color:var(--white);
+  font-size:clamp(2.25rem,4.5vw,3.5rem);font-weight:700;line-height:1.18;
+  letter-spacing:-.045em;margin-bottom:17px;
+}
+.hero h1 span{color:var(--cyan);}
+.hero p{max-width:510px;color:var(--text);font-size:.9rem;line-height:2;opacity:.78;}
+
+/* ERROR */
+.error-message{
+  display:flex;align-items:flex-start;gap:12px;
+  margin-bottom:27px;padding:14px 16px;color:#f0aaaa;
+  background:var(--danger-soft);
+  border:1px solid var(--danger-border);border-right:3px solid var(--danger);
+  border-radius:5px;font-size:.8rem;line-height:1.8;
+}
+.error-icon{width:18px;height:18px;flex:0 0 auto;margin-top:3px;}
+
+/* DEVICE SECTION */
+.device-section{margin-bottom:37px;}
+.section-heading{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.section-label{color:var(--text);font-size:.75rem;font-weight:700;}
+.connection-status{display:flex;align-items:center;gap:7px;color:var(--cyan);font-size:.66rem;font-weight:600;}
+.live-dot{position:relative;width:7px;height:7px;border-radius:50%;background:var(--cyan);box-shadow:0 0 0 3px rgba(25,215,194,.08);}
+.live-dot::after{
+  content:"";position:absolute;inset:-4px;
+  border:1px solid rgba(25,215,194,.28);border-radius:50%;
+  animation:pulse 2.5s ease-out infinite;
+}
+@keyframes pulse{0%{opacity:.8;transform:scale(.7);}70%,100%{opacity:0;transform:scale(1.5);}}
+
+/* DEVICE CARD */
+.device-card{
+  position:relative;min-height:108px;
+  display:flex;align-items:center;gap:18px;
+  padding:20px 22px;overflow:hidden;
+  background:linear-gradient(135deg,rgba(25,215,194,.025),transparent 55%),var(--surface);
+  border:1px solid var(--line);border-radius:6px;
+  box-shadow:0 18px 45px rgba(0,0,0,.12);
+}
+.device-card::before{content:"";position:absolute;top:0;right:0;width:3px;height:100%;background:var(--cyan);}
+.device-card::after{content:"";position:absolute;left:0;bottom:0;width:75px;height:1px;background:var(--cyan);opacity:.65;}
+.device-id{
+  flex:1;min-width:0;color:#d0dee4;
+  direction:ltr;text-align:left;
+  font-family:"JetBrains Mono",monospace;font-size:clamp(.69rem,1.4vw,.84rem);font-weight:600;
+  line-height:1.8;word-break:break-all;user-select:all;
+}
+.copy-button{
+  flex:0 0 auto;min-width:62px;padding:8px 10px;
+  color:var(--text);background:var(--surface-2);
+  border:1px solid var(--line);border-radius:4px;
+  font-size:.68rem;font-weight:700;cursor:pointer;
+  transition:color .15s,background .15s,border-color .15s;
+}
+.copy-button:hover{color:var(--cyan);background:var(--cyan-soft);border-color:var(--cyan-border);}
+.copy-button.copied{color:var(--cyan);border-color:var(--cyan-border);}
+.device-help{margin-top:9px;color:var(--muted);font-size:.66rem;line-height:1.75;}
+
+/* LICENSE */
+.license-section{margin-bottom:27px;}
+.license-label{display:block;margin-bottom:10px;color:var(--text);font-size:.75rem;font-weight:700;}
+.license-input{
+  display:block;width:100%;height:68px;padding:0 20px;
+  color:var(--white);background:var(--surface);
+  border:1px solid var(--line);border-radius:6px;outline:none;
+  direction:ltr;text-align:center;
+  font-family:"JetBrains Mono",monospace;font-size:1.12rem;font-weight:600;letter-spacing:.12em;
+  transition:background .16s,border-color .16s,box-shadow .16s;
+}
+.license-input::placeholder{color:var(--faint);font-size:.77rem;font-weight:400;letter-spacing:.1em;}
+.license-input:hover{border-color:#2a465b;}
+.license-input:focus{background:#0d2031;border-color:var(--cyan);box-shadow:0 0 0 3px rgba(25,215,194,.07),0 15px 35px rgba(0,0,0,.15);}
+.license-input.bad{border-color:var(--danger);box-shadow:0 0 0 3px rgba(238,119,119,.06);}
+.license-info{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:9px;color:var(--muted);font-size:.65rem;line-height:1.7;}
+.license-format{direction:ltr;color:var(--faint);font-family:"JetBrains Mono",monospace;}
+
+/* BUTTON */
+.submit-wrap{position:relative;}
+.submit-button{
+  position:relative;z-index:1;width:100%;height:59px;
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  border:1px solid var(--cyan);border-radius:5px;background:var(--cyan);
+  color:#031411;font-size:.87rem;font-weight:800;cursor:pointer;
+  transition:transform .12s,background .15s,box-shadow .15s;
+}
+.submit-button::before{content:"";position:absolute;inset:4px;border:1px solid rgba(3,20,17,.15);pointer-events:none;}
+.submit-button:hover{background:var(--cyan-hover);transform:translateY(-1px);box-shadow:0 13px 32px rgba(25,215,194,.13);}
+.submit-button:active{transform:translateY(0);}
+.submit-button:disabled{color:var(--muted);background:var(--surface-2);border-color:var(--line);cursor:default;transform:none;box-shadow:none;}
+.spinner{display:none;width:16px;height:16px;border:2px solid rgba(25,215,194,.2);border-top-color:var(--cyan);border-radius:50%;animation:spin .65s linear infinite;}
+.submit-button:disabled .spinner{display:block;}
+.submit-button:disabled .submit-text{display:none;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* SUPPORT */
+.support{margin-top:51px;padding-top:25px;border-top:1px solid var(--line-light);}
+.support-heading{color:var(--text);font-size:.77rem;font-weight:700;margin-bottom:6px;}
+.support-description{max-width:500px;color:var(--muted);font-size:.7rem;line-height:1.85;margin-bottom:18px;}
+.support-description strong{color:var(--text);font-weight:600;}
+.contacts{display:grid;grid-template-columns:1fr 1fr;gap:9px;}
+.contact{
+  min-width:0;display:flex;align-items:center;gap:11px;
+  padding:12px 13px;color:inherit;text-decoration:none;
+  background:rgba(12,26,41,.65);border:1px solid var(--line-light);border-radius:5px;
+  transition:background .15s,border-color .15s;
+}
+.contact:hover{background:var(--cyan-soft);border-color:var(--cyan-border);}
+.contact-icon{width:31px;height:31px;flex:0 0 auto;display:grid;place-items:center;color:var(--cyan);background:var(--surface-3);border:1px solid var(--line);border-radius:4px;font-size:.78rem;}
+.contact-label{display:block;margin-bottom:2px;color:var(--muted);font-size:.57rem;font-weight:600;}
+.contact-number{display:block;color:var(--text);direction:ltr;font-family:"JetBrains Mono",monospace;font-size:.72rem;font-weight:600;}
+
+/* SIDE */
+.side{
+  position:relative;min-height:100vh;
+  display:flex;flex-direction:column;justify-content:space-between;
+  padding:52px 38px;overflow:hidden;
+  background:linear-gradient(145deg,rgba(25,215,194,.025),transparent 38%),var(--surface);
+  border-right:1px solid var(--line);
+}
+.side::before{content:"";position:absolute;top:0;right:0;width:2px;height:145px;background:var(--cyan);}
+.side::after{
+  content:"";position:absolute;width:300px;height:300px;left:-170px;bottom:-150px;
+  border:1px solid rgba(25,215,194,.055);border-radius:50%;
+  box-shadow:0 0 0 35px rgba(25,215,194,.012),0 0 0 75px rgba(25,215,194,.008);
+}
+
+/* SIDE BRAND */
+.side-brand{position:relative;z-index:1;display:flex;align-items:center;gap:11px;}
+.side-mark{width:39px;height:39px;border-radius:4px;background:var(--cyan);display:grid;place-items:center;color:#031411;font-size:16px;font-weight:800;}
+.side-name{color:var(--white);font-size:.94rem;font-weight:800;letter-spacing:.15em;}
+.side-name span{color:var(--cyan);}
+
+/* SIDE CONTENT */
+.side-content{position:relative;z-index:1;}
+.side-title{max-width:280px;margin-bottom:15px;color:var(--white);font-size:1.55rem;line-height:1.55;font-weight:700;letter-spacing:-.025em;}
+.side-description{max-width:285px;color:var(--muted);font-size:.72rem;line-height:2;}
+
+/* PROCESS */
+.process{margin-top:40px;}
+.process-item{position:relative;display:grid;grid-template-columns:35px 1fr;gap:12px;padding-bottom:28px;}
+.process-item:not(:last-child)::after{content:"";position:absolute;top:35px;right:17px;width:1px;height:calc(100% - 23px);background:var(--line);}
+.process-number{position:relative;z-index:2;width:35px;height:35px;display:grid;place-items:center;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:50%;font-family:"JetBrains Mono",monospace;font-size:.65rem;font-weight:600;}
+.process-item:first-child .process-number{color:var(--cyan);background:var(--cyan-soft);border-color:var(--cyan-border);}
+.process-title{padding-top:3px;margin-bottom:4px;color:var(--text);font-size:.75rem;font-weight:700;}
+.process-description{color:var(--muted);font-size:.65rem;line-height:1.8;}
+
+/* SIDE FOOTER */
+.side-footer{position:relative;z-index:1;padding-top:20px;border-top:1px solid var(--line-light);color:var(--faint);direction:ltr;text-align:right;font-family:"JetBrains Mono",monospace;font-size:.56rem;}
+
+/* TOAST */
+.toast{
+  position:fixed;z-index:100;left:50%;bottom:24px;
+  display:flex;align-items:center;gap:9px;
+  padding:11px 17px;color:var(--white);background:#102639;
+  border:1px solid var(--cyan-border);border-radius:5px;
+  box-shadow:0 14px 40px rgba(0,0,0,.4);
+  font-size:.71rem;font-weight:600;white-space:nowrap;pointer-events:none;
+  opacity:0;transform:translate(-50%,16px);
+  transition:opacity .18s,transform .22s;
+}
+.toast.show{opacity:1;transform:translate(-50%,0);}
+.toast-dot{width:7px;height:7px;flex:0 0 auto;border-radius:50%;background:var(--cyan);}
+
+/* RESPONSIVE */
+@media(max-width:980px){
+  .page{grid-template-columns:minmax(0,1fr) 325px;}
+  .main{padding-inline:5vw;}
+  .side{padding-inline:28px;}
+}
+@media(max-width:780px){
+  .page{display:block;}
+  .main{min-height:auto;padding:34px 24px 52px;}
+  .side{min-height:auto;padding:30px 24px 35px;border-right:none;border-top:1px solid var(--line);}
+  .side::before{display:none;}
+  .side-content{margin-top:32px;}
+  .process{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:30px;}
+  .process-item{display:block;padding:0;}
+  .process-item:not(:last-child)::after{display:none;}
+  .process-title{margin-top:9px;}
+  .side-footer{margin-top:32px;}
+}
+@media(max-width:540px){
+  .main{padding:26px 18px 44px;}
+  .hero h1{font-size:2.15rem;}
+  .device-card{min-height:98px;padding:17px;gap:11px;}
+  .device-id{font-size:.66rem;}
+  .license-input{height:61px;font-size:.96rem;letter-spacing:.08em;}
+  .license-info{display:block;}
+  .contacts{grid-template-columns:1fr;}
+  .process{grid-template-columns:1fr;gap:20px;}
+  .process-item{display:grid;grid-template-columns:35px 1fr;gap:12px;}
+  .process-title{margin-top:0;}
+}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms !important;transition-duration:.001ms !important;}
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- MAIN -->
+  <main class="main">
+    <div class="content">
+
+      <!-- BRAND -->
+      <div class="brand">
+        <div class="brand-mark">R</div>
+        <div class="brand-name">RUN<span>X</span></div>
+      </div>
+
+      <!-- HERO -->
+      <header class="hero">
+        <h1>فعّل جهازك وابدأ <span>العمل</span></h1>
+        <p>أدخل رمز الترخيص المرتبط بهذا الجهاز للوصول إلى نظام RUN X وإدارة مبيعاتك.</p>
+      </header>
+
+      <!-- ERROR -->
+      {% if error %}
+      <div class="error-message" role="alert">
+        <svg class="error-icon" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+          <circle cx="10" cy="10" r="7.5" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M10 6.5V10.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <circle cx="10" cy="13.25" r=".8" fill="currentColor"/>
+        </svg>
+        <span>{{ error }}</span>
+      </div>
+      {% endif %}
+
+      <!-- FORM -->
+      <form method="POST" autocomplete="off" id="theForm">
+
+        <!-- DEVICE -->
+        <section class="device-section">
+          <div class="section-heading">
+            <span class="section-label">معرف هذا الجهاز</span>
+            <span class="connection-status">
+              <span class="live-dot"></span>
+              الجهاز متصل
+            </span>
+          </div>
+          <div class="device-card">
+            <span class="device-id" id="deviceId">{{ device_id if device_id else '—' }}</span>
+            <button type="button" class="copy-button" id="copyBtn" aria-label="نسخ معرف الجهاز">نسخ</button>
+          </div>
+          <p class="device-help">أرسل معرف الجهاز إلى الدعم الفني للحصول على رمز الترخيص.</p>
+        </section>
+
+        <!-- LICENSE -->
+        <section class="license-section">
+          <label class="license-label" for="activation_code">رمز الترخيص</label>
+          <input
+            type="text"
+            id="activation_code"
+            name="activation_code"
+            class="license-input{% if error %} bad{% endif %}"
+            placeholder="XXXX-XXXX-XXXX-XXXX"
+            maxlength="19"
+            autocorrect="off"
+            autocapitalize="characters"
+            spellcheck="false"
+            inputmode="text"
+            required
+            autofocus
+            aria-describedby="licenseInfo"
+          >
+          <div class="license-info" id="licenseInfo">
+            <span>أدخل الرمز كما استلمته من الدعم.</span>
+            <span class="license-format">16 characters</span>
+          </div>
+        </section>
+
+        <!-- SUBMIT -->
+        <div class="submit-wrap">
+          <button type="submit" class="submit-button" id="submitBtn">
+            <span class="spinner" aria-hidden="true"></span>
+            <span class="submit-text">تفعيل النظام</span>
+          </button>
+        </div>
+
+      </form>
+
+      <!-- SUPPORT -->
+      <section class="support">
+        <h2 class="support-heading">تحتاج إلى رمز الترخيص؟</h2>
+        <p class="support-description">
+          انسخ <strong>معرف الجهاز</strong> أعلاه واتصل بالدعم الفني.
+          سيصدرون رمزاً خاصاً بهذا الجهاز.
+        </p>
+        <div class="contacts">
+          <a class="contact" href="tel:0915968929">
+            <span class="contact-icon">☎</span>
+            <span>
+              <span class="contact-label">الدعم الفني ١</span>
+              <span class="contact-number">0915968929</span>
+            </span>
+          </a>
+          <a class="contact" href="tel:0942823929">
+            <span class="contact-icon">☎</span>
+            <span>
+              <span class="contact-label">الدعم الفني ٢</span>
+              <span class="contact-number">0942823929</span>
+            </span>
+          </a>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- SIDE -->
+  <aside class="side">
+    <div class="side-brand">
+      <div class="side-mark">R</div>
+      <div class="side-name">RUN<span>X</span></div>
+    </div>
+
+    <div class="side-content">
+      <h2 class="side-title">ترخيص واحد، وجهاز واحد، وتجربة جاهزة للعمل.</h2>
+      <p class="side-description">رمز الترخيص مرتبط بمعرف جهازك، لذلك تأكد من إرسال المعرف الصحيح عند التواصل مع الدعم.</p>
+      <div class="process">
+        <div class="process-item">
+          <div class="process-number">01</div>
+          <div>
+            <h3 class="process-title">انسخ المعرف</h3>
+            <p class="process-description">استخدم زر النسخ بجانب معرف جهازك.</p>
+          </div>
+        </div>
+        <div class="process-item">
+          <div class="process-number">02</div>
+          <div>
+            <h3 class="process-title">تواصل مع الدعم</h3>
+            <p class="process-description">أرسل المعرف إلى أحد أرقام الدعم.</p>
+          </div>
+        </div>
+        <div class="process-item">
+          <div class="process-number">03</div>
+          <div>
+            <h3 class="process-title">أدخل الرمز</h3>
+            <p class="process-description">ضع رمز الترخيص هنا وفعّل النظام.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer class="side-footer">RUNX / SYSTEM ACTIVATION / v2.0.0</footer>
+  </aside>
+
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast" role="status" aria-live="polite">
+  <span class="toast-dot"></span>
+  تم نسخ معرف الجهاز
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var input        = document.getElementById("activation_code");
+  var copyButton   = document.getElementById("copyBtn");
+  var deviceIdEl   = document.getElementById("deviceId");
+  var form         = document.getElementById("theForm");
+  var submitButton = document.getElementById("submitBtn");
+  var toast        = document.getElementById("toast");
+  var toastTimer;
+
+  /* FORMAT */
+  input.addEventListener("input", function(){
+    var raw    = input.value.replace(/[^A-Z0-9]/gi,"").toUpperCase().slice(0,16);
+    var groups = raw.match(/.{1,4}/g);
+    input.value = groups ? groups.join("-") : raw;
+    input.classList.remove("bad");
+  });
+
+  /* SMART BACKSPACE */
+  input.addEventListener("keydown", function(e){
+    if(e.key==="Backspace" && input.value.slice(-1)==="-"){
+      e.preventDefault();
+      input.value = input.value.slice(0,-1);
+    }
+  });
+
+  /* COPY */
+  copyButton.addEventListener("click", function(){
+    var value = deviceIdEl.textContent.trim();
+    if(!value || value==="—") return;
+    function showCopied(){
+      copyButton.textContent="تم";
+      copyButton.classList.add("copied");
+      setTimeout(function(){copyButton.textContent="نسخ";copyButton.classList.remove("copied");},1800);
+      clearTimeout(toastTimer);
+      toast.classList.add("show");
+      toastTimer = setTimeout(function(){toast.classList.remove("show");},2400);
+    }
+    function fallback(text){
+      var ta=document.createElement("textarea");
+      ta.value=text;ta.style.position="fixed";ta.style.opacity="0";
+      document.body.appendChild(ta);ta.focus();ta.select();
+      try{document.execCommand("copy");}catch(e){}
+      document.body.removeChild(ta);showCopied();
+    }
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(value).then(showCopied).catch(function(){fallback(value);});
+    } else { fallback(value); }
+  });
+
+  /* PREVENT DOUBLE SUBMIT */
+  form.addEventListener("submit", function(){
+    submitButton.disabled = true;
+  });
+})();
+</script>
+</body>
+</html>

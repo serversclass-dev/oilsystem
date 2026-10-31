@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="theme-color" content="#f2f0ea"/>
+  <title>تسجيل الدخول — RUN X</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=Tajawal:wght@300;400;500;700;900&display=swap" rel="stylesheet"/>
+
+  <style>
+    :root {
+      --asphalt:      #17191b;
+      --asphalt-soft: #24272a;
+      --asphalt-lg:   #303438;
+      --paper:        #f2f0ea;
+      --white:        #ffffff;
+      --signal:       #ff5c35;
+      --signal-dark:  #dc3e19;
+      --instrument:   #4478ff;
+      --steel:        #a8adb3;
+      --ink:          #17191b;
+      --muted:        #696e72;
+      --line-light:   rgba(23,25,27,.13);
+      --line-dark:    rgba(255,255,255,.13);
+      --display: "Barlow Condensed", "Tajawal", sans-serif;
+      --arabic:  "Tajawal", "IBM Plex Sans", sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      min-height: 100vh;
+      font-family: var(--arabic);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      min-height: 100vh;
+    }
+
+    /* ── Left panel (branding / dark) ── */
+    .brand-panel {
+      background:
+        radial-gradient(circle at 15% 85%, rgba(255,92,53,.18), transparent 45%),
+        radial-gradient(circle at 85% 15%, rgba(68,120,255,.14), transparent 40%),
+        var(--asphalt);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 48px 52px;
+      color: var(--white);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .brand-panel::before {
+      content: "";
+      position: absolute;
+      bottom: -60px; left: -60px;
+      width: 340px; height: 340px;
+      border: 1px solid var(--line-dark);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    .brand-panel::after {
+      content: "";
+      position: absolute;
+      bottom: 40px; left: 40px;
+      width: 200px; height: 200px;
+      border: 1px solid rgba(255,255,255,.05);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    /* Logo mark */
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 13px;
+      text-decoration: none;
+      color: var(--white);
+      position: relative;
+      z-index: 1;
+    }
+    .logo-mark {
+      position: relative;
+      width: 42px; height: 42px;
+      border: 1px solid var(--line-dark);
+      border-radius: 50%;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+    .logo-mark::before, .logo-mark::after {
+      position: absolute;
+      content: "";
+      background: var(--signal);
+    }
+    .logo-mark::before {
+      top: 19px; left: 7px;
+      width: 26px; height: 3.5px;
+      transform: rotate(-22deg);
+    }
+    .logo-mark::after {
+      top: 9px; left: 20px;
+      width: 3.5px; height: 24px;
+      transform: rotate(-22deg);
+    }
+    .logo-text {}
+    .logo-name {
+      font-family: var(--display);
+      font-size: 1.55rem;
+      font-weight: 700;
+      letter-spacing: .02em;
+      line-height: 1;
+    }
+    .logo-sub {
+      font-size: .6rem;
+      color: #5c6368;
+      letter-spacing: .16em;
+      display: block;
+      margin-top: 3px;
+    }
+
+    /* Brand body copy */
+    .brand-body {
+      position: relative;
+      z-index: 1;
+    }
+    .brand-headline {
+      font-family: var(--display);
+      font-size: clamp(3rem, 5vw, 5.5rem);
+      font-weight: 800;
+      line-height: .88;
+      letter-spacing: -.04em;
+      margin-bottom: 20px;
+    }
+    .brand-headline span { color: var(--signal); }
+    .brand-desc {
+      font-size: .8rem;
+      color: var(--steel);
+      line-height: 1.7;
+      max-width: 320px;
+    }
+
+    /* Stats strip */
+    .brand-stats {
+      display: flex;
+      gap: 28px;
+      position: relative;
+      z-index: 1;
+    }
+    .brand-stat-val {
+      font-family: var(--display);
+      font-size: 1.8rem;
+      font-weight: 700;
+      line-height: 1;
+      color: var(--white);
+    }
+    .brand-stat-lbl {
+      font-size: .6rem;
+      color: #5c6368;
+      margin-top: 3px;
+    }
+
+    /* ── Right panel (form) ── */
+    .form-panel {
+      background: var(--paper);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 52px 64px;
+    }
+
+    .login-box {
+      width: 100%;
+      max-width: 380px;
+    }
+
+    .login-title {
+      font-family: var(--display);
+      font-size: 2.4rem;
+      font-weight: 800;
+      letter-spacing: -.04em;
+      line-height: 1;
+      color: var(--ink);
+      margin-bottom: 6px;
+    }
+    .login-sub {
+      font-size: .78rem;
+      color: var(--muted);
+      margin-bottom: 34px;
+    }
+
+    /* Flash alerts */
+    .alert {
+      display: flex;
+      align-items: flex-start;
+      gap: 9px;
+      padding: 10px 13px;
+      border-radius: 8px;
+      font-size: .76rem;
+      margin-bottom: 16px;
+      border: 1px solid;
+    }
+    .alert svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-width: 2; flex-shrink: 0; margin-top: 1px; }
+    .alert-close { margin-right: auto; cursor: pointer; background: none; border: none; color: inherit; opacity: .5; padding: 0; display: flex; }
+    .alert-close:hover { opacity: 1; }
+    .alert-success { background: rgba(22,131,95,.08);  border-color: rgba(22,131,95,.22);  color: #16835f; }
+    .alert-danger  { background: rgba(199,61,61,.08);  border-color: rgba(199,61,61,.22);  color: #c73d3d; }
+    .alert-warning { background: rgba(181,106,0,.08);  border-color: rgba(181,106,0,.22);  color: #b56a00; }
+    .alert-info    { background: rgba(68,120,255,.08); border-color: rgba(68,120,255,.22); color: #4478ff; }
+
+    /* Form fields */
+    .form-group {
+      display: grid;
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+    .form-label {
+      font-size: .67rem;
+      font-weight: 600;
+      color: var(--muted);
+    }
+    .form-control {
+      width: 100%;
+      height: 46px;
+      padding: 0 14px;
+      background: var(--white);
+      border: 1px solid var(--line-light);
+      border-radius: 6px;
+      color: var(--ink);
+      font-family: var(--arabic);
+      font-size: .85rem;
+      outline: none;
+      transition: border-color .14s, box-shadow .14s;
+    }
+    .form-control:focus {
+      border-color: var(--signal);
+      box-shadow: 0 0 0 3px rgba(255,92,53,.12);
+    }
+    .form-control::placeholder { color: var(--steel); }
+
+    /* Password wrapper */
+    .pw-wrap { position: relative; }
+    .pw-wrap .form-control { padding-left: 44px; }
+    .pw-toggle {
+      position: absolute;
+      top: 50%; left: 12px;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 0;
+      display: flex;
+    }
+    .pw-toggle:hover { color: var(--ink); }
+    .pw-toggle svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-width: 1.8; }
+
+    /* Submit button */
+    .btn-login {
+      width: 100%;
+      height: 48px;
+      background: var(--signal);
+      color: var(--white);
+      border: 1px solid var(--signal-dark);
+      border-radius: 6px;
+      font-family: var(--arabic);
+      font-size: .88rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background .14s, transform .1s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .btn-login svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-width: 2; }
+    .btn-login:hover { background: var(--signal-dark); }
+    .btn-login:active { transform: translateY(1px); }
+
+    .login-footer {
+      margin-top: 28px;
+      text-align: center;
+      font-size: .65rem;
+      color: var(--muted);
+    }
+
+    /* Divider */
+    .field-divider {
+      height: 1px;
+      background: var(--line-light);
+      margin: 20px 0;
+    }
+
+    /* Responsive */
+    @media (max-width: 860px) {
+      body { grid-template-columns: 1fr; }
+      .brand-panel { display: none; }
+      .form-panel { padding: 40px 24px; background: var(--paper); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── Brand Panel ── -->
+  <div class="brand-panel">
+    <div class="logo">
+      <span class="logo-mark" aria-hidden="true"></span>
+      <div class="logo-text">
+        <span class="logo-name">RUN X</span>
+        <span class="logo-sub">OIL & AUTO PARTS</span>
+      </div>
+    </div>
+
+    <div class="brand-body">
+      <h1 class="brand-headline">
+        إدارة<br>
+        <span>ذكية.</span><br>
+        أداء محكم.
+      </h1>
+      <p class="brand-desc">
+        نظام متكامل لإدارة محلات الزيوت وقطع السيارات — فواتير، مخزون، تغيير الزيت، وتقارير الأرباح في مكان واحد.
+      </p>
+    </div>
+
+    <div class="brand-stats">
+      <div>
+        <div class="brand-stat-val">∞</div>
+        <div class="brand-stat-lbl">فاتورة مسجلة</div>
+      </div>
+      <div>
+        <div class="brand-stat-val">100%</div>
+        <div class="brand-stat-lbl">تتبع المخزون</div>
+      </div>
+      <div>
+        <div class="brand-stat-val">24/7</div>
+        <div class="brand-stat-lbl">جاهز دائماً</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Form Panel ── -->
+  <div class="form-panel">
+    <div class="login-box">
+
+      <h2 class="login-title">أهلاً بك</h2>
+      <p class="login-sub">سجّل دخولك للمتابعة</p>
+
+      <!-- Flash messages -->
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for cat, msg in messages %}
+          {% set cls = 'alert-success' if cat=='success' else ('alert-danger' if cat=='danger' else ('alert-warning' if cat=='warning' else 'alert-info')) %}
+          <div class="alert {{ cls }}" role="alert">
+            {% if cat == 'success' %}
+            <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            {% elif cat == 'danger' %}
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+            {% elif cat == 'warning' %}
+            <svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            {% else %}
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            {% endif %}
+            <span>{{ msg }}</span>
+            <button class="alert-close" onclick="this.closest('.alert').remove()" type="button">
+              <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      <!-- Login form -->
+      <form method="POST" action="{{ url_for('login') }}" autocomplete="off" novalidate>
+
+        <div class="form-group">
+          <label class="form-label" for="username">اسم المستخدم</label>
+          <input
+            class="form-control"
+            type="text"
+            id="username"
+            name="username"
+            placeholder="أدخل اسم المستخدم"
+            autocomplete="username"
+            required
+            autofocus
+          />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="password">كلمة المرور</label>
+          <div class="pw-wrap">
+            <input
+              class="form-control"
+              type="password"
+              id="password"
+              name="password"
+              placeholder="••••••••"
+              autocomplete="current-password"
+              required
+            />
+            <button class="pw-toggle" type="button" onclick="togglePw()" aria-label="إظهار/إخفاء كلمة المرور">
+              <svg id="pw-eye" viewBox="0 0 24 24">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <button class="btn-login" type="submit">
+          <svg viewBox="0 0 24 24">
+            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+            <polyline points="10 17 15 12 10 7"/>
+            <line x1="15" y1="12" x2="3" y2="12"/>
+          </svg>
+          تسجيل الدخول
+        </button>
+
+      </form>
+
+      <div class="login-footer">
+        RUN X — نظام إدارة محلات الزيوت
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    function togglePw() {
+      var inp = document.getElementById('password');
+      var eye = document.getElementById('pw-eye');
+      if (inp.type === 'password') {
+        inp.type = 'text';
+        eye.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>';
+      } else {
+        inp.type = 'password';
+        eye.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
+      }
+    }
+  </script>
+
+</body>
+</html>

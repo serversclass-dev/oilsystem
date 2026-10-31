@@ -1,0 +1,518 @@
+{% extends 'base.html' %}
+
+{% block title %}لوحة التحكم — {{ settings_get('shop_name','RUN X') }}{% endblock %}
+
+{% block extra_head %}
+<style>
+.dash-kpi {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 20px;
+}
+.dash-grid {
+  display: grid;
+  grid-template-columns: minmax(0,1.55fr) minmax(0,.65fr);
+  gap: 16px;
+  align-items: start;
+}
+.right-col {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Performance card (dark hero) */
+.hero-card {
+  background:
+    radial-gradient(circle at 8% 5%, rgba(68,120,255,.22), transparent 30%),
+    var(--asphalt);
+  border-radius: var(--r4);
+  overflow: hidden;
+  color: var(--white);
+  border: 1px solid rgba(255,255,255,.06);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: 200px;
+  margin-bottom: 16px;
+}
+.hero-left {
+  padding: 26px 24px 22px;
+  border-left: 1px solid var(--line-dark);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.hero-caption {
+  font-size: .65rem;
+  color: var(--steel);
+  font-family: var(--arabic);
+}
+.hero-value {
+  font-family: var(--display);
+  font-size: 3.4rem;
+  font-weight: 800;
+  letter-spacing: -.04em;
+  line-height: .9;
+  color: var(--white);
+}
+.hero-sub {
+  font-size: .62rem;
+  color: var(--steel);
+  margin-top: 4px;
+}
+.hero-right {
+  padding: 26px 24px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.hero-change {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: .63rem;
+  color: #9ab6ff;
+  margin-top: 6px;
+}
+.hero-change svg {
+  width: 12px; height: 12px;
+  fill: none; stroke: currentColor; stroke-width: 2;
+}
+.hero-divider {
+  height: 1px;
+  background: var(--line-dark);
+  margin: 10px 0;
+}
+.hero-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: .62rem;
+  color: var(--steel);
+}
+.hero-row strong { color: var(--white); font-weight: 500; }
+
+/* Alert panel variants */
+.panel-alert-red { border-color: rgba(199,61,61,.3); }
+.panel-alert-red .panel-header { background: rgba(199,61,61,.05); }
+.panel-alert-yellow { border-color: rgba(181,106,0,.28); }
+.panel-alert-yellow .panel-header { background: rgba(181,106,0,.04); }
+
+/* Quick-list rows */
+.qrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--line-light);
+  gap: 10px;
+  transition: background .1s;
+}
+.qrow:last-child { border-bottom: none; }
+.qrow:hover { background: rgba(242,240,234,.5); }
+.qrow-info {}
+.qrow-name {
+  font-size: .76rem;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.2;
+}
+.qrow-sub {
+  font-size: .62rem;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.qrow-side {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-shrink: 0;
+}
+
+/* WhatsApp button */
+.wa-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: var(--r2);
+  background: #25d366;
+  color: #fff;
+  font-size: .62rem;
+  font-weight: 700;
+  text-decoration: none;
+  gap: 4px;
+}
+.wa-btn svg {
+  width: 13px; height: 13px;
+  fill: currentColor;
+}
+
+/* Days badge */
+.days-badge {
+  text-align: center;
+}
+.days-badge .badge {
+  font-size: .6rem;
+}
+.days-date {
+  font-size: .58rem;
+  color: var(--muted);
+  margin-top: 2px;
+  text-align: center;
+}
+
+/* Oil record link row */
+.oil-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--line-light);
+  text-decoration: none;
+  transition: background .1s;
+}
+.oil-row:last-child { border-bottom: none; }
+.oil-row:hover { background: rgba(242,240,234,.5); }
+
+@media (max-width: 1100px) {
+  .dash-kpi { grid-template-columns: repeat(2,1fr); }
+  .dash-grid { grid-template-columns: 1fr; }
+  .hero-card { grid-template-columns: 1fr; }
+  .hero-left { border-left: none; border-bottom: 1px solid var(--line-dark); }
+}
+@media (max-width: 600px) {
+  .dash-kpi { grid-template-columns: 1fr 1fr; }
+}
+</style>
+{% endblock %}
+
+{% block topbar_pre %}
+{% set days = ['الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت','الأحد'] %}
+{{ days[today.weekday()] }} · {{ today.strftime('%d / %m / %Y') }}
+{% endblock %}
+
+{% block topbar_title %}
+لوحة التحكم
+{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('sales_new') }}" class="btn btn-primary">
+  <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+  فاتورة جديدة
+</a>
+{% endblock %}
+
+{% block content %}
+
+<!-- ─── KPI Cards ─── -->
+<div class="dash-kpi">
+
+  <div class="stat-card">
+    <div class="stat-card-accent" style="background:var(--signal)"></div>
+    <span class="stat-card-label">مبيعات اليوم</span>
+    <span class="stat-card-value stat-signal">{{ "%.2f"|format(today_total) }}</span>
+    <span class="stat-card-sub">{{ currency }} &nbsp;·&nbsp; {{ today_count }} فاتورة</span>
+  </div>
+
+  {% if current_user.is_admin and today_profit is not none %}
+  <div class="stat-card">
+    <div class="stat-card-accent" style="background:var(--success)"></div>
+    <span class="stat-card-label">ربح اليوم</span>
+    <span class="stat-card-value stat-success">{{ "%.2f"|format(today_profit) }}</span>
+    <span class="stat-card-sub">{{ currency }}</span>
+  </div>
+  {% else %}
+  <div class="stat-card">
+    <div class="stat-card-accent" style="background:var(--danger)"></div>
+    <span class="stat-card-label">منتجات ناقصة</span>
+    <span class="stat-card-value stat-danger">{{ low_stock_count }}</span>
+    <span class="stat-card-sub">
+      {% if current_user.is_admin %}
+      <a href="{{ url_for('inventory', filter='low') }}" class="text-muted">عرض الكل ←</a>
+      {% else %}صنف تحت الحد الأدنى{% endif %}
+    </span>
+  </div>
+  {% endif %}
+
+  <div class="stat-card">
+    <div class="stat-card-accent" style="background:var(--instrument)"></div>
+    <span class="stat-card-label">مبيعات الشهر</span>
+    <span class="stat-card-value stat-instrument">{{ "%.2f"|format(month_total) }}</span>
+    <span class="stat-card-sub">{{ currency }}</span>
+  </div>
+
+  {% if current_user.is_admin and month_profit is not none %}
+  <div class="stat-card">
+    <div class="stat-card-accent" style="background:var(--warning)"></div>
+    <span class="stat-card-label">ربح الشهر</span>
+    <span class="stat-card-value stat-warning">{{ "%.2f"|format(month_profit) }}</span>
+    <span class="stat-card-sub">{{ currency }}</span>
+  </div>
+  {% else %}
+  <div class="stat-card">
+    <div class="stat-card-accent" style="background:var(--warning)"></div>
+    <span class="stat-card-label">مواعيد زيت قريبة</span>
+    <span class="stat-card-value stat-warning">{{ oil_due_count }}</span>
+    <span class="stat-card-sub">
+      <a href="{{ url_for('oil_change_list', filter='upcoming') }}" class="text-muted">عرض الكل ←</a>
+    </span>
+  </div>
+  {% endif %}
+
+</div>
+
+<!-- ─── Main Grid ─── -->
+<div class="dash-grid">
+
+  <!-- LEFT: recent sales -->
+  <div>
+
+    <!-- Hero stats banner -->
+    <div class="hero-card">
+      <div class="hero-left">
+        <p class="hero-caption">إجمالي مبيعات اليوم</p>
+        <p class="hero-value">{{ "%.0f"|format(today_total) }}</p>
+        <p class="hero-sub">{{ currency }} — {{ today_count }} فاتورة مسجلة</p>
+        {% if current_user.is_admin and today_profit is not none %}
+        <div class="hero-divider"></div>
+        <div class="hero-row">
+          <span>الربح الصافي اليوم</span>
+          <strong>{{ "%.2f"|format(today_profit) }} {{ currency }}</strong>
+        </div>
+        {% endif %}
+      </div>
+      <div class="hero-right">
+        <p class="hero-caption">مبيعات الشهر</p>
+        <p class="hero-value">{{ "%.0f"|format(month_total) }}</p>
+        <p class="hero-sub">{{ currency }}</p>
+        {% if current_user.is_admin and month_profit is not none %}
+        <span class="hero-change">
+          <svg viewBox="0 0 16 16"><path d="m3 10 4-4 3 3 3-4"/></svg>
+          ربح الشهر: {{ "%.2f"|format(month_profit) }} {{ currency }}
+        </span>
+        {% endif %}
+        <div class="hero-divider"></div>
+        <div class="hero-row">
+          <span>تاريخ اليوم</span>
+          <strong>{{ today.strftime('%d/%m/%Y') }}</strong>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent invoices -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">آخر الفواتير</span>
+        <div class="panel-actions">
+          <a href="{{ url_for('sales_list') }}" class="btn btn-secondary btn-sm">عرض الكل</a>
+        </div>
+      </div>
+
+      {% if recent_sales %}
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>رقم الفاتورة</th>
+              <th>الزبون</th>
+              <th>الإجمالي</th>
+              {% if current_user.is_admin %}<th>الربح</th>{% endif %}
+              <th>الوقت</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in recent_sales %}
+            <tr>
+              <td>
+                <span class="badge badge-muted no-dot" style="font-family:var(--display);font-size:.7rem">
+                  {{ s.invoice_no }}
+                </span>
+                {% if s.sale_type == 'oil_change' %}
+                <span class="badge badge-success no-dot" style="margin-right:4px">زيت</span>
+                {% endif %}
+              </td>
+              <td class="td-strong">{{ s.customer_name }}</td>
+              <td class="td-num text-signal">{{ "%.2f"|format(s.total) }}
+                <span class="text-muted text-xs"> {{ currency }}</span>
+              </td>
+              {% if current_user.is_admin %}
+              <td class="td-num {% if s.profit >= 0 %}text-success{% else %}text-danger{% endif %}" style="font-size:.8rem">
+                {{ "%.2f"|format(s.profit) }}
+              </td>
+              {% endif %}
+              <td class="td-muted text-xs">{{ s.sale_date.strftime('%H:%M') }}</td>
+              <td>
+                <a href="{{ url_for('sales_detail', sid=s.id) }}" class="btn btn-secondary btn-icon-sm">
+                  <svg viewBox="0 0 24 24" style="width:14px;height:14px"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="panel-body">
+        <div class="empty-state">
+          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          <div class="empty-state-title">لا توجد فواتير اليوم</div>
+          <div class="empty-state-sub">سجّل أول فاتورة الآن</div>
+          <a href="{{ url_for('sales_new') }}" class="btn btn-primary btn-sm">
+            <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            فاتورة جديدة
+          </a>
+        </div>
+      </div>
+      {% endif %}
+
+    </div><!-- /panel recent sales -->
+
+  </div><!-- /left col -->
+
+  <!-- RIGHT: alerts + oil -->
+  <div class="right-col">
+
+    <!-- Low stock warning -->
+    {% if low_stock %}
+    <div class="panel panel-alert-red">
+      <div class="panel-header">
+        <span class="panel-title text-danger">منتجات ناقصة</span>
+        <span class="badge badge-danger no-dot" style="margin-right:4px">{{ low_stock|length }}</span>
+        {% if current_user.is_admin %}
+        <div class="panel-actions">
+          <a href="{{ url_for('inventory', filter='low') }}" class="btn btn-secondary btn-sm">الكل</a>
+        </div>
+        {% endif %}
+      </div>
+      <div class="panel-body-flush">
+        {% for p in low_stock %}
+        <div class="qrow">
+          <div class="qrow-info">
+            <div class="qrow-name">{{ p.name }}</div>
+            {% if p.category_obj %}
+            <div class="qrow-sub">{{ p.category_obj.name }}</div>
+            {% endif %}
+          </div>
+          <span class="badge {% if p.quantity == 0 %}badge-danger{% else %}badge-warning{% endif %}">
+            {{ p.quantity }} {{ p.unit }}
+          </span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Overdue oil changes -->
+    {% if overdue_oil %}
+    <div class="panel panel-alert-red">
+      <div class="panel-header">
+        <span class="panel-title text-danger">متأخرون عن تغيير الزيت</span>
+      </div>
+      <div class="panel-body-flush">
+        {% for oc in overdue_oil %}
+        {% set days_late = (today - oc.next_change_date).days %}
+        <div class="qrow">
+          <div class="qrow-info">
+            <div class="qrow-name">{{ oc.customer_name }}</div>
+            <div class="qrow-sub">{{ oc.car_plate }}</div>
+          </div>
+          <div class="qrow-side">
+            <span class="badge badge-danger">{{ days_late }} يوم</span>
+            {% if oc.customer_phone %}
+            <a href="https://wa.me/{{ oc.customer_phone|replace(' ','')|replace('+','') }}"
+               target="_blank" class="wa-btn">
+              <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>
+            </a>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Upcoming oil changes -->
+    {% if upcoming_oil %}
+    <div class="panel panel-alert-yellow">
+      <div class="panel-header">
+        <span class="panel-title text-warning">مواعيد تغيير الزيت</span>
+        <span class="badge badge-warning no-dot" style="margin-right:4px">{{ upcoming_oil|length }}</span>
+        <div class="panel-actions">
+          <a href="{{ url_for('oil_change_list', filter='upcoming') }}" class="btn btn-secondary btn-sm">الكل</a>
+        </div>
+      </div>
+      <div class="panel-body-flush">
+        {% for oc in upcoming_oil %}
+        {% set days_left = (oc.next_change_date - today).days %}
+        <div class="qrow">
+          <div class="qrow-info">
+            <div class="qrow-name">{{ oc.customer_name }}</div>
+            <div class="qrow-sub">{{ oc.car_plate }}{% if oc.oil_type %} · {{ oc.oil_type }}{% endif %}</div>
+          </div>
+          <div class="qrow-side">
+            <div class="days-badge">
+              <span class="badge {% if days_left == 0 %}badge-danger{% else %}badge-warning{% endif %}">
+                {% if days_left == 0 %}اليوم
+                {% elif days_left == 1 %}غداً
+                {% else %}{{ days_left }} يوم{% endif %}
+              </span>
+              <div class="days-date">{{ oc.next_change_date.strftime('%d/%m') }}</div>
+            </div>
+            {% if oc.customer_phone %}
+            <a href="https://wa.me/{{ oc.customer_phone|replace(' ','')|replace('+','') }}"
+               target="_blank" class="wa-btn">
+              <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>
+            </a>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Recent oil changes -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">آخر تغييرات الزيت</span>
+        <div class="panel-actions">
+          <a href="{{ url_for('oil_change_new') }}" class="btn btn-primary btn-sm">
+            <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            تسجيل
+          </a>
+        </div>
+      </div>
+      <div class="panel-body-flush">
+        {% if recent_oil %}
+        {% for oc in recent_oil %}
+        <a href="{{ url_for('oil_change_detail', oid=oc.id) }}" class="oil-row">
+          <div>
+            <div class="qrow-name">{{ oc.customer_name }}</div>
+            <div style="display:flex;align-items:center;gap:6px;margin-top:3px">
+              <span class="badge badge-instrument no-dot" style="font-size:.58rem">{{ oc.car_plate }}</span>
+              {% if oc.oil_type %}
+              <span class="text-xs text-muted">{{ oc.oil_type }}</span>
+              {% endif %}
+            </div>
+          </div>
+          <span class="text-xs text-muted nowrap">{{ oc.change_date.strftime('%d/%m') }}</span>
+        </a>
+        {% endfor %}
+        {% else %}
+        <div style="padding:28px 16px;text-align:center;color:var(--muted);font-size:.75rem">
+          <svg viewBox="0 0 24 24" style="width:32px;height:32px;fill:none;stroke:var(--steel);stroke-linecap:round;stroke-width:1.5;margin:0 auto 10px;display:block;opacity:.5">
+            <path d="M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v3"/>
+            <rect x="9" y="11" width="14" height="10" rx="2"/>
+          </svg>
+          لا توجد سجلات
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+  </div><!-- /right col -->
+
+</div><!-- /dash-grid -->
+
+{% endblock %}

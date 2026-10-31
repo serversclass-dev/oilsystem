@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+
+{% block title %}فواتير الطريق — {{ settings_get('shop_name','RUN X') }}{% endblock %}
+
+{% block topbar_pre %}المبيعات{% endblock %}
+{% block topbar_title %}
+<svg style="width:26px;height:26px;fill:none;stroke:currentColor;stroke-linecap:round;stroke-width:2" viewBox="0 0 24 24">
+  <path d="M1 3h15v13H1z"/><path d="M16 8h4l3 3v5h-7V8z"/>
+  <circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>
+</svg>
+فواتير الطريق
+{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('road_invoice_new') }}" class="btn btn-primary">
+  <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+  فاتورة طريق جديدة
+</a>
+{% endblock %}
+
+{% block content %}
+
+<!-- Filter bar -->
+<form method="GET" action="">
+  <div class="filter-bar" style="margin-bottom:16px;border-radius:var(--r3);border:1px solid var(--line-light);background:var(--white)">
+    <div class="search-bar" style="max-width:340px">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input class="form-control" name="q" value="{{ search }}" placeholder="بحث بالسائق أو الوجهة أو الرقم…">
+    </div>
+    <button class="btn btn-secondary btn-sm" type="submit">بحث</button>
+    {% if search %}
+    <a href="{{ url_for('road_invoice_list') }}" class="btn btn-ghost btn-sm">مسح</a>
+    {% endif %}
+  </div>
+</form>
+
+<div class="panel">
+  <div class="panel-header">
+    <span class="panel-title">فواتير الطريق</span>
+    <span class="panel-count">{{ records.total }} فاتورة</span>
+  </div>
+
+  {% if records.items %}
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>رقم الفاتورة</th>
+          <th>السائق</th>
+          <th>الوجهة</th>
+          <th>عدد الأصناف</th>
+          <th>التاريخ</th>
+          <th>المُنشئ</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for inv in records.items %}
+        <tr>
+          <td>
+            <span class="badge badge-instrument no-dot" style="font-family:var(--display);font-size:.72rem">
+              {{ inv.invoice_no }}
+            </span>
+          </td>
+          <td class="td-strong">{{ inv.driver_name }}</td>
+          <td>{{ inv.destination }}</td>
+          <td class="td-num">{{ inv.items|length }}</td>
+          <td class="td-muted text-xs">{{ inv.created_at.strftime('%Y/%m/%d %H:%M') }}</td>
+          <td class="td-muted text-xs">{{ inv.user.full_name or inv.user.username if inv.user else '—' }}</td>
+          <td>
+            <div style="display:flex;gap:5px;justify-content:flex-end">
+              <a href="{{ url_for('road_invoice_detail', rid=inv.id) }}"
+                 class="btn btn-secondary btn-icon-sm" title="عرض">
+                <svg viewBox="0 0 24 24" style="width:14px;height:14px">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+              </a>
+              <a href="{{ url_for('road_invoice_print', rid=inv.id) }}"
+                 class="btn btn-dark btn-icon-sm" title="طباعة" target="_blank">
+                <svg viewBox="0 0 24 24" style="width:14px;height:14px">
+                  <path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                  <rect x="6" y="14" width="12" height="8"/>
+                </svg>
+              </a>
+              {% if current_user.is_admin %}
+              <form method="POST" action="{{ url_for('road_invoice_delete', rid=inv.id) }}"
+                    onsubmit="return confirm('حذف الفاتورة وإعادة المخزون؟')">
+                <button class="btn btn-danger btn-icon-sm" type="submit" title="حذف">
+                  <svg viewBox="0 0 24 24" style="width:14px;height:14px">
+                    <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
+                    <path d="M10 11v6M14 11v6M9 6V4h6v2"/>
+                  </svg>
+                </button>
+              </form>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  {% if records.pages > 1 %}
+  <div class="pagination">
+    {% if records.has_prev %}
+    <a class="page-link" href="?page={{ records.prev_num }}&q={{ search }}">‹ السابق</a>
+    {% endif %}
+    {% for p in records.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+      {% if p %}
+      <a class="page-link {% if p == records.page %}active{% endif %}"
+         href="?page={{ p }}&q={{ search }}">{{ p }}</a>
+      {% else %}
+      <span class="page-link disabled">…</span>
+      {% endif %}
+    {% endfor %}
+    {% if records.has_next %}
+    <a class="page-link" href="?page={{ records.next_num }}&q={{ search }}">التالي ›</a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div class="empty-state">
+    <svg viewBox="0 0 24 24">
+      <path d="M1 3h15v13H1z"/><path d="M16 8h4l3 3v5h-7V8z"/>
+      <circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>
+    </svg>
+    <div class="empty-state-title">لا توجد فواتير طريق</div>
+    <div class="empty-state-sub">سجّل أول فاتورة طريق الآن</div>
+    <a href="{{ url_for('road_invoice_new') }}" class="btn btn-primary btn-sm">
+      <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      فاتورة جديدة
+    </a>
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}

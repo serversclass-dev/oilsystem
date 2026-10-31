@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>كرت تغيير الزيت — {{ oc.car_plate }}</title>
+<style>
+:root{
+  --ink:#000;--paper:#fff;--page:#e6e7e3;--header-fill:#e8e8e4;--line:#222;
+  --arabic:Tahoma,Arial,sans-serif;--numbers:Arial,Tahoma,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{color-scheme:light;}
+body{margin:0;padding:16px 12px 32px;background:var(--page);color:var(--ink);font-family:var(--arabic);font-size:16px;font-weight:700;line-height:1.6;}
+.toolbar{width:210mm;max-width:100%;margin:0 auto 12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;}
+.toolbar-title{font-size:17px;font-weight:700;}
+.toolbar-actions{display:flex;gap:8px;}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:8px 20px;border:2px solid #111;border-radius:4px;background:#111;color:#fff;font-family:var(--arabic);font-size:15px;font-weight:700;cursor:pointer;}
+.btn:hover{background:#333;}
+.btn-sec{background:transparent;color:#000;}
+.btn-sec:hover{background:#d7dacf;}
+.invoice{display:flex;flex-direction:column;width:210mm;max-width:100%;min-height:297mm;margin:0 auto;padding:6mm;background:var(--paper);color:#000;box-shadow:0 8px 32px rgba(0,0,0,.12);}
+.invoice>*{flex-shrink:0;}
+.num{direction:ltr;unicode-bidi:isolate;font-family:var(--numbers);font-variant-numeric:tabular-nums;font-weight:700;}
+/* HEADER */
+.company-header{display:grid;grid-template-columns:minmax(0,1fr) 180px;align-items:center;gap:16px;padding-bottom:14px;border-bottom:3px solid #000;}
+.company-name{font-size:26px;font-weight:700;line-height:1.3;}
+.company-tagline{margin-top:4px;font-size:15px;font-weight:700;line-height:1.5;}
+.company-en{margin-top:5px;font-family:var(--numbers);font-size:11px;font-weight:700;letter-spacing:.5px;}
+.brand{text-align:left;font-family:var(--numbers);}
+.brand strong{display:block;font-size:22px;font-weight:700;line-height:1.2;}
+.brand span{display:block;margin-top:6px;font-size:11px;font-weight:700;}
+.brand-line{width:56px;height:4px;margin:10px 0 0 auto;background:#000;}
+/* IDENTITY */
+.identity{display:grid;grid-template-columns:1fr 1fr 1fr;margin-top:10px;border:2px solid #000;}
+.id-cell{min-width:0;padding:9px 10px;}
+.id-cell+.id-cell{border-inline-start:1px solid #222;}
+.lbl{display:block;margin-bottom:3px;font-size:13px;font-weight:700;}
+.id-heading{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;}
+.id-heading h1{margin:0;font-size:22px;font-weight:700;line-height:1.5;}
+.id-heading p{margin:5px 0 0;font-family:var(--numbers);font-size:12px;font-weight:700;letter-spacing:1px;}
+.id-val{font-size:15px;font-weight:700;}
+/* PLATE */
+.plate-section{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:14px;margin-top:10px;border:2px solid #000;padding:10px 12px;}
+.plate-num{font-family:var(--numbers);font-size:32px;font-weight:700;direction:ltr;border:2.5px solid #000;padding:5px 16px;letter-spacing:.08em;line-height:1;}
+.plate-lbl{display:block;font-size:13px;font-weight:700;margin-bottom:3px;}
+.plate-val{font-size:18px;font-weight:700;line-height:1.4;}
+.plate-sub{font-size:13px;font-weight:700;margin-top:2px;}
+.plate-phone{text-align:left;}
+.plate-phone .plate-val{font-family:var(--numbers);font-size:16px;direction:ltr;}
+/* INFO GRID */
+.info-grid{display:grid;grid-template-columns:1fr 1fr;margin-top:10px;border:2px solid #000;}
+.ig-cell{padding:9px 10px;}
+.ig-cell+.ig-cell{border-inline-start:1px solid #222;}
+.ig-title{display:block;font-size:12px;font-weight:700;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid #ccc;letter-spacing:.5px;}
+.ig-row{display:flex;justify-content:space-between;align-items:baseline;padding:3px 0;}
+.ig-lbl{font-size:14px;font-weight:700;}
+.ig-val{font-size:15px;font-weight:700;font-family:var(--numbers);direction:ltr;}
+/* NEXT CHANGE */
+.next-hero{margin-top:10px;border:2px solid #000;}
+.next-hero-head{background:var(--header-fill);padding:7px 12px;border-bottom:2px solid #000;display:flex;align-items:center;justify-content:space-between;}
+.next-hero-title{font-size:15px;font-weight:700;}
+.next-hero-body{display:grid;grid-template-columns:1fr 1px 1fr;align-items:stretch;}
+.nh-cell{padding:14px 16px;text-align:center;}
+.nh-divider{background:#222;}
+.nh-lbl{display:block;font-size:13px;font-weight:700;margin-bottom:6px;}
+.nh-val{font-family:var(--numbers);font-size:30px;font-weight:700;direction:ltr;line-height:1;}
+.nh-val.date{font-size:20px;}
+/* KM STRIP */
+.km-strip{display:grid;grid-template-columns:repeat(3,1fr);margin-top:10px;border:2px solid #000;}
+.km-cell{padding:9px 10px;}
+.km-cell+.km-cell{border-inline-start:1px solid #222;}
+.km-lbl{display:block;font-size:12px;font-weight:700;margin-bottom:3px;}
+.km-val{font-size:16px;font-weight:700;font-family:var(--numbers);direction:ltr;}
+/* NOTES */
+.notes-wrap{margin-top:10px;border:2px solid #000;padding:9px 12px;min-height:32px;}
+.notes-title{display:block;font-size:13px;font-weight:700;margin-bottom:4px;}
+.notes-text{font-size:14px;font-weight:700;line-height:1.8;white-space:pre-wrap;}
+/* KEEP */
+.keep-note{margin-top:10px;border:2px solid #000;padding:10px 14px;text-align:center;font-size:15px;font-weight:700;}
+/* BOTTOM */
+.invoice-bottom{margin-top:auto;padding-top:36px;}
+.signatures{display:grid;grid-template-columns:1fr 1fr;gap:48px;margin-bottom:20px;}
+.signature{padding-top:9px;border-top:2px solid #000;text-align:center;font-size:15px;font-weight:700;}
+.footer{padding-top:10px;border-top:2px solid #000;text-align:center;font-size:15px;font-weight:700;line-height:1.8;}
+
+@page{size:A4 portrait;margin:6mm;}
+@media print{
+  html,body{margin:0!important;padding:0!important;background:#fff!important;font-family:Tahoma,Arial,sans-serif;font-size:12pt;font-weight:700;}
+  .toolbar{display:none!important;}
+  .invoice{width:100%!important;min-height:284mm!important;margin:0!important;padding:0!important;border:0!important;box-shadow:none!important;background:#fff!important;}
+  .invoice,.invoice *{color:#000!important;font-weight:700!important;}
+  .company-header{grid-template-columns:minmax(0,1fr) 47mm;gap:5mm;padding-bottom:4mm;border-bottom:.7mm solid #000;}
+  .company-name{font-size:20pt;}
+  .company-tagline{font-size:12pt;}
+  .company-en{font-size:10pt;}
+  .brand strong{font-size:17pt;}
+  .brand-line{height:.8mm;background:#000!important;}
+  .identity{margin-top:3mm;border:.5mm solid #000;}
+  .id-cell{padding:2.5mm;}
+  .lbl{font-size:11pt;}
+  .id-val{font-size:12pt;}
+  .id-heading h1{font-size:17pt;}
+  .id-heading p{font-size:10pt;}
+  .plate-section{margin-top:3mm;border:.5mm solid #000;padding:2.5mm;}
+  .plate-num{font-size:26pt;border:.7mm solid #000;}
+  .plate-val{font-size:14pt;}
+  .info-grid{margin-top:3mm;border:.5mm solid #000;}
+  .ig-cell{padding:2.5mm;}
+  .ig-lbl{font-size:11pt;}
+  .ig-val{font-size:12pt;}
+  .next-hero{margin-top:3mm;border:.5mm solid #000;}
+  .next-hero-head{padding:2.5mm;border-bottom:.5mm solid #000;background:#e5e5e5!important;}
+  .next-hero-title{font-size:12pt;}
+  .nh-cell{padding:4mm 5mm;}
+  .nh-lbl{font-size:11pt;}
+  .nh-val{font-size:22pt;}
+  .nh-val.date{font-size:16pt;}
+  .km-strip{margin-top:3mm;border:.5mm solid #000;}
+  .km-cell{padding:2.5mm;}
+  .km-lbl{font-size:11pt;}
+  .km-val{font-size:12pt;}
+  .notes-wrap{margin-top:3mm;border:.5mm solid #000;padding:2.5mm;}
+  .notes-title{font-size:11pt;}
+  .notes-text{font-size:11pt;}
+  .keep-note{margin-top:3mm;border:.5mm solid #000;padding:2.5mm;font-size:12pt;}
+  .invoice-bottom{margin-top:auto!important;padding-top:10mm;}
+  .signatures{gap:14mm;margin-bottom:5mm;}
+  .signature{padding-top:3mm;border-top:.5mm solid #000;font-size:12pt;}
+  .footer{padding-top:3mm;border-top:.5mm solid #000;font-size:12pt;}
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+}
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="toolbar-title">كرت تغيير الزيت — {{ oc.car_plate }}</span>
+  <div class="toolbar-actions">
+    <button class="btn btn-sec" onclick="window.history.back()">إغلاق</button>
+    <button class="btn" onclick="window.print()">طباعة / حفظ PDF</button>
+  </div>
+</div>
+
+{% set shop_tagline = settings_get('shop_tagline','') %}
+
+<main class="invoice">
+
+  <header class="company-header">
+    <div>
+      <div class="company-name">{{ shop_name }}</div>
+      {% if shop_tagline %}<div class="company-tagline">{{ shop_tagline }}</div>{% endif %}
+      <div class="company-en">OIL & LUBRICANTS & AUTO PARTS</div>
+    </div>
+    <div class="brand" dir="ltr">
+      <strong>RUN X</strong>
+      <span>OIL & AUTO PARTS</span>
+      <div class="brand-line"></div>
+    </div>
+  </header>
+
+  <section class="identity">
+    <div class="id-cell">
+      <span class="lbl">تاريخ التغيير</span>
+      <div class="id-val num" dir="ltr">{{ oc.change_date.strftime('%Y/%m/%d') }}</div>
+    </div>
+    <div class="id-cell id-heading">
+      <h1>كرت تغيير الزيت</h1>
+      <p dir="ltr" lang="en">OIL CHANGE CARD</p>
+    </div>
+    <div class="id-cell">
+      <span class="lbl">العداد عند التغيير</span>
+      <div class="id-val num" dir="ltr">{{ "{:,}".format(oc.km_at_change) }} كم</div>
+    </div>
+  </section>
+
+  <section class="plate-section">
+    <div class="plate-num">{{ oc.car_plate }}</div>
+    <div>
+      <span class="plate-lbl">الزبون</span>
+      <div class="plate-val">{{ oc.customer_name }}</div>
+      {% if oc.car_model %}<div class="plate-sub">{{ oc.car_model }}</div>{% endif %}
+    </div>
+    {% if oc.customer_phone %}
+    <div class="plate-phone">
+      <span class="plate-lbl">الهاتف</span>
+      <div class="plate-val">{{ oc.customer_phone }}</div>
+    </div>
+    {% endif %}
+  </section>
+
+  <div class="info-grid">
+    <div class="ig-cell">
+      <span class="ig-title">تفاصيل الزيت — OIL DETAILS</span>
+      <div class="ig-row"><span class="ig-lbl">نوع الزيت</span><span class="ig-val">{{ oc.oil_type or '—' }}</span></div>
+      <div class="ig-row"><span class="ig-lbl">الكمية</span><span class="ig-val">{{ oc.oil_qty }} لتر</span></div>
+      {% if oc.service_fee and oc.service_fee > 0 %}
+      <div class="ig-row"><span class="ig-lbl">أجرة التغيير</span><span class="ig-val">{{ "%.2f"|format(oc.service_fee) }} {{ currency }}</span></div>
+      {% endif %}
+    </div>
+    <div class="ig-cell">
+      <span class="ig-title">بيانات العداد — ODOMETER</span>
+      <div class="ig-row"><span class="ig-lbl">العداد الحالي</span><span class="ig-val">{{ "{:,}".format(oc.km_at_change) }} كم</span></div>
+      <div class="ig-row"><span class="ig-lbl">فترة التغيير</span><span class="ig-val">{{ "{:,}".format(oc.km_interval) }} كم</span></div>
+      <div class="ig-row"><span class="ig-lbl">العداد القادم</span><span class="ig-val">{% if oc.next_change_km %}{{ "{:,}".format(oc.next_change_km) }} كم{% else %}—{% endif %}</span></div>
+    </div>
+  </div>
+
+  <div class="km-strip">
+    <div class="km-cell">
+      <span class="km-lbl">تاريخ التغيير الحالي</span>
+      <div class="km-val">{{ oc.change_date.strftime('%Y/%m/%d') }}</div>
+    </div>
+    <div class="km-cell">
+      <span class="km-lbl">العداد عند التغيير</span>
+      <div class="km-val">{{ "{:,}".format(oc.km_at_change) }} كم</div>
+    </div>
+    <div class="km-cell">
+      <span class="km-lbl">التاريخ القادم</span>
+      <div class="km-val">{% if oc.next_change_date %}{{ oc.next_change_date.strftime('%Y/%m/%d') }}{% else %}—{% endif %}</div>
+    </div>
+  </div>
+
+  <div class="next-hero">
+    <div class="next-hero-head">
+      <span class="next-hero-title">موعد التغيير القادم</span>
+      <span style="font-family:var(--numbers);font-size:12px;" dir="ltr">NEXT OIL CHANGE DUE</span>
+    </div>
+    <div class="next-hero-body">
+      <div class="nh-cell">
+        <span class="nh-lbl">العداد — KM</span>
+        <div class="nh-val">{% if oc.next_change_km %}{{ "{:,}".format(oc.next_change_km) }}{% else %}—{% endif %}</div>
+      </div>
+      <div class="nh-divider"></div>
+      <div class="nh-cell">
+        <span class="nh-lbl">التاريخ — DATE</span>
+        <div class="nh-val date">{% if oc.next_change_date %}{{ oc.next_change_date.strftime('%Y/%m/%d') }}{% else %}—{% endif %}</div>
+      </div>
+    </div>
+  </div>
+
+  {% if oc.notes %}
+  <div class="notes-wrap">
+    <span class="notes-title">ملاحظات</span>
+    <div class="notes-text">{{ oc.notes }}</div>
+  </div>
+  {% endif %}
+
+  <div class="keep-note">يرجى الاحتفاظ بهذا الكرت وإحضاره عند الزيارة القادمة</div>
+
+  <div class="invoice-bottom">
+    <div class="signatures">
+      <div class="signature">توقيع الزبون</div>
+      <div class="signature">توقيع الفني</div>
+    </div>
+    <footer class="footer">
+      {% if invoice_footer %}{{ invoice_footer }}{% endif %}
+    </footer>
+  </div>
+
+</main>
+
+<script>
+if(new URLSearchParams(location.search).get('autoprint')==='1')
+  window.addEventListener('load',function(){setTimeout(window.print,400);});
+</script>
+</body>
+</html>

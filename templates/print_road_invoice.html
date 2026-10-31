@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>فاتورة طريق {{ inv.invoice_no }}</title>
+<style>
+:root{
+  --ink:#000;--paper:#fff;--page:#e6e7e3;--header-fill:#e8e8e4;--line:#222;
+  --arabic:Tahoma,Arial,sans-serif;--numbers:Arial,Tahoma,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{color-scheme:light;}
+body{margin:0;padding:16px 12px 32px;background:var(--page);color:var(--ink);font-family:var(--arabic);font-size:16px;font-weight:700;line-height:1.6;}
+.toolbar{width:210mm;max-width:100%;margin:0 auto 12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;}
+.toolbar-title{font-size:17px;font-weight:700;}
+.toolbar-actions{display:flex;gap:8px;}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:8px 20px;border:2px solid #111;border-radius:4px;background:#111;color:#fff;font-family:var(--arabic);font-size:15px;font-weight:700;cursor:pointer;}
+.btn:hover{background:#333;}
+.btn-sec{background:transparent;color:#000;}
+.btn-sec:hover{background:#d7dacf;}
+.invoice{display:flex;flex-direction:column;width:210mm;max-width:100%;min-height:297mm;margin:0 auto;padding:6mm;background:var(--paper);color:#000;box-shadow:0 8px 32px rgba(0,0,0,.12);}
+.invoice>*{flex-shrink:0;}
+.num{direction:ltr;unicode-bidi:isolate;font-family:var(--numbers);font-variant-numeric:tabular-nums;font-weight:700;}
+/* HEADER */
+.company-header{display:grid;grid-template-columns:minmax(0,1fr) 180px;align-items:center;gap:16px;padding-bottom:14px;border-bottom:3px solid #000;}
+.company-name{font-size:26px;font-weight:700;line-height:1.3;}
+.company-tagline{margin-top:4px;font-size:15px;font-weight:700;line-height:1.5;}
+.company-en{margin-top:5px;font-family:var(--numbers);font-size:11px;font-weight:700;letter-spacing:.5px;}
+.brand{text-align:left;font-family:var(--numbers);}
+.brand strong{display:block;font-size:22px;font-weight:700;line-height:1.2;}
+.brand span{display:block;margin-top:6px;font-size:11px;font-weight:700;}
+.brand-line{width:56px;height:4px;margin:10px 0 0 auto;background:#000;}
+/* IDENTITY */
+.identity{display:grid;grid-template-columns:1fr 1fr 1fr;margin-top:10px;border:2px solid #000;}
+.id-cell{min-width:0;padding:9px 10px;}
+.id-cell+.id-cell{border-inline-start:1px solid #222;}
+.lbl{display:block;margin-bottom:3px;font-size:13px;font-weight:700;}
+.id-heading{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;}
+.id-heading h1{margin:0;font-size:22px;font-weight:700;line-height:1.5;}
+.id-heading p{margin:5px 0 0;font-family:var(--numbers);font-size:12px;font-weight:700;letter-spacing:1px;}
+.id-val{font-size:15px;font-weight:700;}
+/* ROUTE */
+.route-strip{display:grid;grid-template-columns:1.6fr 1fr 1fr;margin-top:10px;border:2px solid #000;}
+.rt-cell{min-width:0;padding:9px 10px;}
+.rt-cell+.rt-cell{border-inline-start:1px solid #222;}
+.rt-lbl{display:block;margin-bottom:3px;font-size:13px;font-weight:700;}
+.rt-val{font-size:18px;font-weight:700;line-height:1.4;}
+.rt-val.large{font-size:22px;}
+/* TABLE */
+.items-section{width:100%;margin-top:14px;}
+.table-note{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:7px;font-size:13px;font-weight:700;}
+.items-table{width:100%;border-collapse:collapse;table-layout:fixed;}
+.col-n{width:6%;}.col-d{width:42%;}.col-s{width:16%;}.col-q{width:18%;}.col-u{width:18%;}
+.items-table th,.items-table td{border:1.5px solid #222;padding:9px 5px;vertical-align:middle;}
+.items-table th{background:var(--header-fill);color:#000;text-align:center;font-size:14px;font-weight:700;line-height:1.5;}
+.items-table th span{display:block;margin-top:2px;font-family:var(--numbers);font-size:10px;font-weight:700;}
+.items-table td{color:#000;font-size:15px;font-weight:700;line-height:1.6;}
+.td-n{text-align:center;font-family:var(--numbers);}
+.td-d{text-align:right;font-size:15px;font-weight:700;}
+.td-s{text-align:center;}
+.td-q{text-align:center;font-family:var(--numbers);font-size:16px;font-weight:700;}
+.td-u{text-align:center;font-size:14px;font-weight:700;}
+.src-tag{display:inline-block;font-size:11px;font-weight:700;border:1.5px solid #555;color:#333;padding:2px 7px;}
+/* SUMMARY */
+.summary-strip{display:grid;grid-template-columns:repeat(4,1fr);margin-top:10px;border:2px solid #000;}
+.ss-cell{padding:9px 10px;text-align:center;}
+.ss-cell+.ss-cell{border-inline-start:1px solid #222;}
+.ss-lbl{display:block;font-size:12px;font-weight:700;margin-bottom:4px;}
+.ss-val{font-family:var(--numbers);font-size:22px;font-weight:700;direction:ltr;line-height:1;}
+.ss-val.text{font-family:var(--arabic);font-size:14px;}
+/* NOTES */
+.notes-wrap{margin-top:10px;border:2px solid #000;padding:9px 12px;min-height:36px;}
+.notes-title{display:block;font-size:13px;font-weight:700;margin-bottom:4px;}
+.notes-text{font-size:14px;font-weight:700;line-height:1.8;white-space:pre-wrap;}
+/* BOTTOM */
+.invoice-bottom{margin-top:auto;padding-top:36px;}
+.signatures{display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;margin-bottom:20px;}
+.signature{padding-top:9px;border-top:2px solid #000;text-align:center;font-size:14px;font-weight:700;}
+.footer{padding-top:10px;border-top:2px solid #000;text-align:center;font-size:15px;font-weight:700;line-height:1.8;}
+
+@page{size:A4 portrait;margin:6mm;}
+@media print{
+  html,body{margin:0!important;padding:0!important;background:#fff!important;font-family:Tahoma,Arial,sans-serif;font-size:12pt;font-weight:700;}
+  .toolbar{display:none!important;}
+  .invoice{width:100%!important;min-height:284mm!important;margin:0!important;padding:0!important;border:0!important;box-shadow:none!important;background:#fff!important;}
+  .invoice,.invoice *{color:#000!important;font-weight:700!important;}
+  .company-header{grid-template-columns:minmax(0,1fr) 47mm;gap:5mm;padding-bottom:4mm;border-bottom:.7mm solid #000;}
+  .company-name{font-size:20pt;}
+  .company-tagline{font-size:12pt;}
+  .company-en{font-size:10pt;}
+  .brand strong{font-size:17pt;}
+  .brand-line{height:.8mm;background:#000!important;}
+  .identity{margin-top:3mm;border:.5mm solid #000;}
+  .id-cell{padding:2.5mm;}
+  .lbl{font-size:11pt;}
+  .id-val{font-size:12pt;}
+  .id-heading h1{font-size:17pt;}
+  .id-heading p{font-size:10pt;}
+  .route-strip{margin-top:3mm;border:.5mm solid #000;}
+  .rt-cell{padding:2.5mm;}
+  .rt-lbl{font-size:11pt;}
+  .rt-val{font-size:13pt;}
+  .rt-val.large{font-size:16pt;}
+  .items-section{margin-top:4mm;}
+  .table-note{margin-bottom:2mm;font-size:10pt;}
+  .items-table th,.items-table td{padding:2.5mm 1mm;border:.35mm solid #000!important;}
+  .items-table th{background:#e5e5e5!important;font-size:11pt;}
+  .items-table th span{font-size:9pt;}
+  .items-table td{font-size:12pt;}
+  .td-q{font-size:13pt;}
+  .src-tag{border:.4mm solid #555;font-size:9pt;}
+  .summary-strip{margin-top:3mm;border:.5mm solid #000;}
+  .ss-cell{padding:3mm 4mm;}
+  .ss-lbl{font-size:11pt;}
+  .ss-val{font-size:17pt;}
+  .ss-val.text{font-size:12pt;}
+  .notes-wrap{margin-top:3mm;border:.5mm solid #000;padding:2.5mm;}
+  .notes-title{font-size:11pt;}
+  .notes-text{font-size:11pt;}
+  .invoice-bottom{margin-top:auto!important;padding-top:10mm;}
+  .signatures{gap:8mm;margin-bottom:5mm;}
+  .signature{padding-top:3mm;border-top:.5mm solid #000;font-size:11pt;}
+  .footer{padding-top:3mm;border-top:.5mm solid #000;font-size:12pt;}
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+}
+</style>
+</head>
+<body>
+
+{% set shop_tagline = settings_get('shop_tagline','') %}
+
+<div class="toolbar">
+  <span class="toolbar-title">فاتورة طريق — {{ inv.invoice_no }}</span>
+  <div class="toolbar-actions">
+    <button class="btn btn-sec" onclick="window.history.back()">إغلاق</button>
+    <button class="btn" onclick="window.print()">طباعة / حفظ PDF</button>
+  </div>
+</div>
+
+<main class="invoice">
+
+  <header class="company-header">
+    <div>
+      <div class="company-name">{{ shop_name }}</div>
+      {% if shop_tagline %}<div class="company-tagline">{{ shop_tagline }}</div>{% endif %}
+      <div class="company-en">OIL & LUBRICANTS & AUTO PARTS</div>
+    </div>
+    <div class="brand" dir="ltr">
+      <strong>RUN X</strong>
+      <span>OIL & AUTO PARTS</span>
+      <div class="brand-line"></div>
+    </div>
+  </header>
+
+  <section class="identity">
+    <div class="id-cell">
+      <span class="lbl">رقم الفاتورة</span>
+      <div class="id-val num" dir="ltr">{{ inv.invoice_no }}</div>
+      <div class="id-val num" dir="ltr">{{ inv.created_at.strftime('%Y/%m/%d') }}</div>
+    </div>
+    <div class="id-cell id-heading">
+      <h1>فاتورة طريق</h1>
+      <p dir="ltr" lang="en">ROAD INVOICE</p>
+    </div>
+    <div class="id-cell">
+      <span class="lbl">عدد الأصناف</span>
+      <div class="id-val num">{{ inv.items|length }}</div>
+      <div class="id-val num" dir="ltr">{{ inv.created_at.strftime('%H:%M') }}</div>
+    </div>
+  </section>
+
+  <section class="route-strip">
+    <div class="rt-cell">
+      <span class="rt-lbl">الوجهة</span>
+      <div class="rt-val large">{{ inv.destination }}</div>
+    </div>
+    <div class="rt-cell">
+      <span class="rt-lbl">السائق</span>
+      <div class="rt-val">{{ inv.driver_name }}</div>
+    </div>
+    <div class="rt-cell">
+      <span class="rt-lbl">المستلم</span>
+      <div class="rt-val">{{ inv.customer_name if inv.customer_name else '—' }}</div>
+    </div>
+  </section>
+
+  <section class="items-section">
+    <div class="table-note">
+      <span>عدد الأصناف: <strong class="num">{{ inv.items|length }}</strong></span>
+      <span>فاتورة طريق — {{ inv.created_at.strftime('%Y/%m/%d') }}</span>
+    </div>
+    <table class="items-table">
+      <colgroup><col class="col-n"><col class="col-d"><col class="col-s"><col class="col-q"><col class="col-u"></colgroup>
+      <thead>
+        <tr>
+          <th>م<span>NO.</span></th>
+          <th>اسم الصنف<span>DESCRIPTION</span></th>
+          <th>المصدر<span>SOURCE</span></th>
+          <th>الكمية<span>QTY</span></th>
+          <th>الوحدة<span>UNIT</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in inv.items %}
+        <tr>
+          <td class="td-n">{{ loop.index }}</td>
+          <td class="td-d">{{ item.display_name }}</td>
+          <td class="td-s">
+            {% if item.from_inventory %}<span class="src-tag">مخزون</span>
+            {% else %}<span class="src-tag">خارج</span>{% endif %}
+          </td>
+          <td class="td-q">{{ item.quantity|int if item.quantity == item.quantity|int else item.quantity }}</td>
+          <td class="td-u">{{ item.unit }}</td>
+        </tr>
+        {% endfor %}
+        {% for i in range([10-inv.items|length,4]|min) %}
+        <tr style="height:30px;"><td class="td-n" style="color:#ddd;">{{ inv.items|length+i+1 }}</td><td></td><td></td><td></td><td></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <div class="summary-strip">
+    <div class="ss-cell">
+      <span class="ss-lbl">إجمالي الأصناف</span>
+      <div class="ss-val">{{ inv.items|length }}</div>
+    </div>
+    <div class="ss-cell">
+      <span class="ss-lbl">من المخزون</span>
+      <div class="ss-val">{{ inv.items|selectattr('from_inventory')|list|length }}</div>
+    </div>
+    <div class="ss-cell">
+      <span class="ss-lbl">خارج المخزون</span>
+      <div class="ss-val">{{ inv.items|rejectattr('from_inventory')|list|length }}</div>
+    </div>
+    <div class="ss-cell">
+      <span class="ss-lbl">الوجهة</span>
+      <div class="ss-val text">{{ inv.destination }}</div>
+    </div>
+  </div>
+
+  <div class="notes-wrap">
+    <span class="notes-title">ملاحظات</span>
+    <div class="notes-text">{{ inv.notes if inv.notes else '' }}</div>
+  </div>
+
+  <div class="invoice-bottom">
+    <div class="signatures">
+      <div class="signature">توقيع المُرسِل</div>
+      <div class="signature">توقيع السائق<br>{{ inv.driver_name }}</div>
+      <div class="signature">توقيع المُستلِم{% if inv.customer_name %}<br>{{ inv.customer_name }}{% endif %}</div>
+    </div>
+    <footer class="footer">
+      {% if invoice_footer %}{{ invoice_footer }}{% endif %}
+    </footer>
+  </div>
+
+</main>
+
+{% if autoprint == '1' %}
+<script>window.addEventListener('load',function(){setTimeout(window.print,400);});</script>
+{% endif %}
+</body>
+</html>

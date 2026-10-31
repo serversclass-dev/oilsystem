@@ -1,0 +1,323 @@
+{% extends 'base.html' %}
+
+{% block title %}الديون — {{ settings_get('shop_name','RUN X') }}{% endblock %}
+
+{% block extra_head %}
+<style>
+.summary-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 20px;
+}
+@media (max-width: 800px) { .summary-strip { grid-template-columns: repeat(2,1fr); } }
+@media (max-width: 460px) { .summary-strip { grid-template-columns: 1fr; } }
+
+.status-bar {
+  height: 5px;
+  border-radius: 3px;
+  background: var(--line-light);
+  overflow: hidden;
+  margin-top: 8px;
+}
+.status-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--success);
+  transition: width .4s ease;
+}
+</style>
+{% endblock %}
+
+{% block topbar_pre %}المالية{% endblock %}
+{% block topbar_title %}إدارة الديون{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('debts_new') }}" class="btn btn-primary">
+  <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+  دين جديد
+</a>
+{% endblock %}
+
+{% block content %}
+
+<!-- Summary -->
+<div class="summary-strip">
+
+  <div class="stat-card">
+    <div class="stat-card-accent" style="background:var(--instrument)"></div>
+    <span class="stat-card-label">عدد الديون</span>
+    <span class="stat-card-value stat-instrument">{{ debt_count_filtered }}</span>
+    <span class="stat-card-sub">في النطاق المحدد</span>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-card-accent" style="background:var(--danger)"></div>
+    <span class="stat-card-label">إجمالي الديون</span>
+    <span class="stat-card-value stat-danger">{{ "%.2f"|format(total_amount) }}</span>
+    <span class="stat-card-sub">{{ currency }}</span>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-card-accent" style="background:var(--success)"></div>
+    <span class="stat-card-label">إجمالي المسدد</span>
+    <span class="stat-card-value stat-success">{{ "%.2f"|format(total_paid) }}</span>
+    <span class="stat-card-sub">{{ currency }}</span>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-card-accent" style="background:var(--warning)"></div>
+    <span class="stat-card-label">المتبقي</span>
+    <span class="stat-card-value stat-warning">{{ "%.2f"|format(total_remaining) }}</span>
+    <span class="stat-card-sub">{{ currency }}</span>
+    {% if total_amount > 0 %}
+    <div class="status-bar">
+      <div class="status-bar-fill" style="width:{{ ((total_paid/total_amount)*100)|round|int }}%"></div>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+
+<!-- Main panel -->
+<div class="panel">
+
+  <!-- Filter bar -->
+  <form method="GET" action="{{ url_for('debts_list') }}">
+    <div class="filter-bar">
+
+      <div class="search-bar" style="max-width:260px">
+        <svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg>
+        <input class="form-control" type="search" name="q" value="{{ search }}" placeholder="بحث باسم الزبون أو الهاتف…"/>
+      </div>
+
+      <select class="form-control" name="status" style="width:150px" onchange="this.form.submit()">
+        <option value="" {% if not status_f %}selected{% endif %}>جميع الحالات</option>
+        <option value="unpaid"  {% if status_f=='unpaid'  %}selected{% endif %}>غير مسدد</option>
+        <option value="partial" {% if status_f=='partial' %}selected{% endif %}>مسدد جزئياً</option>
+        <option value="paid"    {% if status_f=='paid'    %}selected{% endif %}>مسدد</option>
+      </select>
+
+      <button class="btn btn-dark btn-sm" type="submit">
+        <svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg>
+        بحث
+      </button>
+
+      {% if search or status_f %}
+      <a href="{{ url_for('debts_list') }}" class="btn btn-secondary btn-sm">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        مسح
+      </a>
+      {% endif %}
+
+      <!-- Quick status filters -->
+      <div style="display:flex;gap:6px;margin-right:auto;flex-wrap:wrap">
+        <a href="{{ url_for('debts_list', status='unpaid') }}"
+           class="btn btn-sm {% if status_f=='unpaid' %}btn-danger{% else %}btn-secondary{% endif %}">
+          غير مسدد
+        </a>
+        <a href="{{ url_for('debts_list', status='partial') }}"
+           class="btn btn-sm {% if status_f=='partial' %}btn-instrument{% else %}btn-secondary{% endif %}">
+          جزئي
+        </a>
+        <a href="{{ url_for('debts_list', status='paid') }}"
+           class="btn btn-sm {% if status_f=='paid' %}btn-success{% else %}btn-secondary{% endif %}">
+          مسدد
+        </a>
+      </div>
+
+    </div>
+  </form>
+
+  <!-- Table -->
+  {% if debts.items %}
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>الزبون</th>
+          <th>الوصف</th>
+          <th>إجمالي الدين</th>
+          <th>المسدد</th>
+          <th>المتبقي</th>
+          <th>الحالة</th>
+          <th>تاريخ الاستحقاق</th>
+          <th>التاريخ</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in debts.items %}
+        <tr>
+          <td>
+            <div class="td-strong">{{ d.customer_name }}</div>
+            {% if d.customer_phone %}
+            <div class="text-xs text-muted">{{ d.customer_phone }}</div>
+            {% endif %}
+          </td>
+          <td class="text-sm text-muted">
+            {{ d.description[:50] if d.description else '—' }}
+          </td>
+          <td>
+            <span class="td-num text-danger">{{ "%.2f"|format(d.total_amount) }}</span>
+            <span class="text-xs text-muted"> {{ currency }}</span>
+          </td>
+          <td>
+            <span class="td-num text-success">{{ "%.2f"|format(d.paid_amount) }}</span>
+            <span class="text-xs text-muted"> {{ currency }}</span>
+          </td>
+          <td>
+            <span class="td-num {% if d.remaining > 0 %}text-warning{% else %}text-success{% endif %}">
+              {{ "%.2f"|format(d.remaining) }}
+            </span>
+            <span class="text-xs text-muted"> {{ currency }}</span>
+          </td>
+          <td>
+            {% if d.status == 'paid' %}
+            <span class="badge badge-success">مسدد</span>
+            {% elif d.status == 'partial' %}
+            <span class="badge badge-instrument">جزئي</span>
+            {% else %}
+            <span class="badge badge-danger">غير مسدد</span>
+            {% endif %}
+          </td>
+          <td class="td-muted text-xs">
+            {% if d.due_date %}
+              <span class="{% if d.due_date < today and d.status != 'paid' %}text-danger fw-6{% endif %}">
+                {{ d.due_date.strftime('%Y/%m/%d') }}
+              </span>
+            {% else %}—{% endif %}
+          </td>
+          <td class="td-muted text-xs nowrap">
+            {{ d.debt_date.strftime('%Y/%m/%d') }}<br>
+            <span style="font-size:.58rem">{{ d.debt_date.strftime('%H:%M') }}</span>
+          </td>
+          <td>
+            <div style="display:flex;gap:5px;align-items:center">
+              <a href="{{ url_for('debt_detail', did=d.id) }}"
+                 class="btn btn-secondary btn-icon-sm" title="عرض">
+                <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-linecap:round;stroke-width:2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+              </a>
+              <a href="{{ url_for('debt_print', did=d.id) }}" target="_blank"
+                 class="btn btn-secondary btn-icon-sm" title="طباعة">
+                <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-linecap:round;stroke-width:2">
+                  <polyline points="6 9 6 2 18 2 18 9"/>
+                  <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                  <rect x="6" y="14" width="12" height="8"/>
+                </svg>
+              </a>
+              {% if current_user.is_admin %}
+              <button class="btn btn-danger btn-icon-sm" type="button"
+                      title="حذف" onclick="confirmDelete({{ d.id }}, '{{ d.customer_name }}')">
+                <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-linecap:round;stroke-width:2">
+                  <polyline points="3 6 5 6 21 6"/>
+                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                </svg>
+              </button>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  {% if debts.pages > 1 %}
+  <div class="pagination">
+    <a href="{{ url_for('debts_list', page=debts.prev_num, q=search, status=status_f) }}"
+       class="page-link {% if not debts.has_prev %}disabled{% endif %}">
+      <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-linecap:round;stroke-width:2">
+        <polyline points="9 18 15 12 9 6"/>
+      </svg>
+    </a>
+    {% for p in debts.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+      {% if p %}
+      <a href="{{ url_for('debts_list', page=p, q=search, status=status_f) }}"
+         class="page-link {% if p == debts.page %}active{% endif %}">{{ p }}</a>
+      {% else %}
+      <span class="page-link disabled">…</span>
+      {% endif %}
+    {% endfor %}
+    <a href="{{ url_for('debts_list', page=debts.next_num, q=search, status=status_f) }}"
+       class="page-link {% if not debts.has_next %}disabled{% endif %}">
+      <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-linecap:round;stroke-width:2">
+        <polyline points="15 18 9 12 15 6"/>
+      </svg>
+    </a>
+    <span class="text-xs text-muted" style="margin-right:8px">
+      {{ debts.total }} دين · صفحة {{ debts.page }} من {{ debts.pages }}
+    </span>
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div class="panel-body">
+    <div class="empty-state">
+      <svg viewBox="0 0 24 24">
+        <path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2z"/>
+        <path d="M12 6v6l4 2"/>
+      </svg>
+      <div class="empty-state-title">لا توجد ديون</div>
+      <div class="empty-state-sub">
+        {% if search or status_f %}لا توجد نتائج تطابق البحث{% else %}لم يتم تسجيل أي دين بعد{% endif %}
+      </div>
+      {% if not search and not status_f %}
+      <a href="{{ url_for('debts_new') }}" class="btn btn-primary btn-sm">
+        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        دين جديد
+      </a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+
+<!-- Delete modal -->
+<div class="modal-overlay" id="delete-modal" onclick="if(event.target===this)hideModal('delete-modal')">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title">تأكيد الحذف</h3>
+      <button class="modal-close" onclick="hideModal('delete-modal')" type="button">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:.82rem;color:var(--muted);line-height:1.6">
+        هل أنت متأكد من حذف دين الزبون
+        <strong id="del-name" style="color:var(--ink)"></strong> ؟<br>
+        سيتم حذف جميع سجلات السداد المرتبطة به.
+      </p>
+      <div class="alert alert-warning" style="margin-top:12px;margin-bottom:0">
+        <svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <span>هذا الإجراء لا يمكن التراجع عنه</span>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <form id="delete-form" method="POST">
+        <button class="btn btn-danger" type="submit">
+          <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+          حذف
+        </button>
+      </form>
+      <button class="btn btn-secondary" onclick="hideModal('delete-modal')" type="button">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function confirmDelete(id, name) {
+  document.getElementById('del-name').textContent = name;
+  document.getElementById('delete-form').action = '/debts/' + id + '/delete';
+  showModal('delete-modal');
+}
+</script>
+{% endblock %}

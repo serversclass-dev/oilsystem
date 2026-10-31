@@ -1,0 +1,1003 @@
+{% extends 'base.html' %}
+
+{% block title %}فاتورة جديدة — {{ settings_get('shop_name','RUN X') }}{% endblock %}
+
+{% block extra_head %}
+<style>
+/* ── Layout ── */
+.pos-layout {
+  display: grid;
+  grid-template-columns: minmax(0,1.65fr) 320px;
+  gap: 16px;
+  align-items: start;
+}
+
+/* ── Sidebar (right) ── */
+.pos-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  position: sticky;
+  top: 80px;
+  align-self: start;
+}
+
+/* ── Product search ── */
+.pos-search-wrap { position: relative; }
+
+.pos-search-input {
+  width: 100%;
+  height: 54px;
+  padding: 0 52px 0 16px;
+  background: var(--white);
+  border: 2px solid var(--line-light);
+  border-radius: var(--r3);
+  color: var(--ink);
+  font-family: var(--arabic);
+  font-size: 1rem;
+  outline: none;
+  transition: border-color .14s, box-shadow .14s;
+}
+.pos-search-input:focus {
+  border-color: var(--signal);
+  box-shadow: 0 0 0 4px rgba(255,92,53,.12);
+}
+.pos-search-input::placeholder { color: var(--steel); }
+
+.pos-search-icon {
+  position: absolute;
+  top: 50%; right: 15px;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: var(--muted);
+  transition: color .15s;
+}
+.pos-search-input:focus ~ .pos-search-icon { color: var(--signal); }
+.pos-search-icon svg {
+  width: 22px; height: 22px;
+  fill: none; stroke: currentColor;
+  stroke-linecap: round; stroke-width: 1.8;
+}
+
+/* ── Dropdown ── */
+.pos-dropdown {
+  display: none;
+  position: fixed;
+  background: var(--white);
+  border: 1px solid var(--line-light);
+  border-radius: var(--r3);
+  box-shadow: 0 16px 48px rgba(23,25,27,.22);
+  z-index: 9999;
+  max-height: 500px;
+  overflow-y: auto;
+  min-width: 420px;
+  animation: ddSlide .12s ease-out;
+}
+@keyframes ddSlide {
+  from { opacity:0; transform:translateY(-6px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+.pos-dropdown.open { display: block; }
+
+/* Scrollbar */
+.pos-dropdown::-webkit-scrollbar { width: 4px; }
+.pos-dropdown::-webkit-scrollbar-track { background: transparent; }
+.pos-dropdown::-webkit-scrollbar-thumb { background: var(--line-light); border-radius: 4px; }
+
+/* Dropdown header */
+.pd-header {
+  padding: 8px 16px 7px;
+  font-size: .6rem; font-weight: 700;
+  color: var(--muted);
+  border-bottom: 1px solid var(--line-light);
+  background: rgba(242,240,234,.7);
+  letter-spacing: .07em;
+  display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; z-index: 1;
+}
+.pd-shortcut { font-size: .58rem; color: var(--steel); font-weight: 400; }
+
+/* Section label inside dropdown */
+.pd-section {
+  padding: 6px 16px 4px;
+  font-size: .58rem; font-weight: 700;
+  color: var(--steel); letter-spacing: .08em;
+  border-bottom: 1px solid rgba(23,25,27,.05);
+  background: rgba(242,240,234,.4);
+}
+
+/* Item row */
+.pd-item {
+  display: flex;
+  align-items: center;
+  padding: 11px 14px;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(23,25,27,.06);
+  gap: 11px;
+  transition: background .09s;
+  position: relative;
+}
+.pd-item:last-child { border-bottom: none; }
+.pd-item:hover, .pd-item.highlighted {
+  background: rgba(255,92,53,.07);
+}
+
+/* Icon */
+.pd-icon {
+  width: 38px; height: 38px;
+  border-radius: 9px;
+  background: linear-gradient(135deg, rgba(255,92,53,.13), rgba(255,92,53,.06));
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  font-family: var(--display);
+  font-size: .8rem; font-weight: 800;
+  color: var(--signal);
+  border: 1px solid rgba(255,92,53,.15);
+}
+.pd-item.highlighted .pd-icon,
+.pd-item:hover .pd-icon {
+  background: linear-gradient(135deg, rgba(255,92,53,.22), rgba(255,92,53,.12));
+}
+
+/* Text */
+.pd-name {
+  font-size: .83rem; font-weight: 600;
+  color: var(--ink); transition: color .09s;
+  line-height: 1.3;
+}
+.pd-item:hover .pd-name,
+.pd-item.highlighted .pd-name { color: var(--signal); }
+
+.pd-name mark {
+  background: rgba(255,92,53,.18);
+  color: var(--signal);
+  font-weight: 800;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+.pd-meta {
+  font-size: .62rem; color: var(--muted);
+  margin-top: 3px;
+  display: flex; align-items: center; gap: 5px; flex-wrap: wrap;
+}
+.pd-bc {
+  font-family: monospace; font-size: .58rem; color: var(--steel);
+  background: rgba(23,25,27,.07); padding: 1px 5px; border-radius: 3px;
+}
+.pd-cat-badge {
+  background: rgba(23,25,27,.07);
+  padding: 1px 7px; border-radius: 20px;
+  font-size: .58rem; color: var(--muted);
+}
+
+/* Right side */
+.pd-right {
+  text-align: left; flex-shrink: 0;
+  display: flex; flex-direction: column;
+  align-items: flex-end; gap: 4px;
+}
+.pd-price {
+  font-family: var(--display); font-size: 1.1rem; font-weight: 800;
+  color: var(--signal); white-space: nowrap; letter-spacing: -.02em;
+}
+.pd-stock {
+  font-size: .62rem; color: var(--muted);
+  display: flex; align-items: center; gap: 4px; white-space: nowrap;
+}
+.pd-stock-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  display: inline-block; background: var(--success); flex-shrink: 0;
+}
+.pd-stock-dot.low  { background: var(--warning); }
+.pd-stock-dot.zero { background: var(--danger); }
+
+/* Score badge (hidden but used for sorting) */
+.pd-score-badge {
+  position: absolute; top: 8px; left: 14px;
+  font-size: .5rem; opacity: .4; pointer-events: none;
+}
+
+/* Quick-add btn appears on hover */
+.pd-add-btn {
+  width: 28px; height: 28px;
+  border-radius: 7px;
+  border: 1.5px solid var(--signal);
+  background: var(--white);
+  color: var(--signal);
+  font-size: 1.1rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0;
+  transition: background .1s, color .1s, transform .1s;
+  line-height: 1;
+}
+.pd-add-btn:hover { background: var(--signal); color: var(--white); transform: scale(1.07); }
+
+/* Empty */
+.pd-empty {
+  padding: 32px 16px; text-align: center; font-size: .76rem; color: var(--muted);
+}
+.pd-empty-icon { font-size: 2rem; margin-bottom: 8px; }
+
+/* ── Category pills ── */
+.cat-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+.cat-pill {
+  padding: 5px 13px;
+  border: 1px solid var(--line-light);
+  border-radius: 20px;
+  font-size: .68rem; font-weight: 600;
+  color: var(--muted); background: var(--white);
+  cursor: pointer;
+  transition: background .12s, color .12s, border-color .12s;
+}
+.cat-pill:hover { background: var(--paper); color: var(--ink); }
+.cat-pill.active { background: var(--asphalt); color: var(--white); border-color: var(--asphalt); }
+
+/* ── Items table ── */
+.items-table { width: 100%; border-collapse: collapse; }
+.items-table th {
+  padding: 9px 12px;
+  font-size: .6rem; font-weight: 600; color: var(--muted);
+  text-align: right; border-bottom: 1px solid var(--line-light);
+  background: rgba(242,240,234,.55); white-space: nowrap;
+}
+.items-table td {
+  padding: 9px 8px; vertical-align: middle;
+  border-bottom: 1px solid var(--line-light);
+}
+.items-table tbody tr:last-child td { border-bottom: none; }
+.items-table tbody tr:hover { background: rgba(242,240,234,.4); }
+.items-table tbody tr { animation: rowIn .15s ease-out; }
+@keyframes rowIn {
+  from { opacity:0; transform:translateX(8px); }
+  to   { opacity:1; transform:translateX(0); }
+}
+
+.item-name-cell { font-size: .78rem; font-weight: 600; color: var(--ink); min-width: 130px; }
+.item-unit  { font-size: .6rem; color: var(--muted); display: block; margin-top: 1px; }
+.item-bc-sm { font-size: .55rem; color: var(--steel); font-family: monospace; display: block; }
+
+.item-input {
+  width: 64px; height: 36px; padding: 0 6px;
+  background: var(--paper); border: 1px solid var(--line-light);
+  border-radius: var(--r2); color: var(--ink);
+  font-family: var(--arabic); font-size: .85rem; font-weight: 700;
+  text-align: center; outline: none;
+  transition: border-color .12s, background .12s;
+  -moz-appearance: textfield;
+}
+.item-input::-webkit-outer-spin-button,
+.item-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.item-input:focus { border-color: var(--signal); background: var(--white); }
+
+.qty-stepper { display: flex; align-items: center; gap: 4px; }
+.qty-btn {
+  width: 30px; height: 36px;
+  border: 1px solid var(--line-light);
+  border-radius: var(--r2);
+  background: var(--white); color: var(--ink);
+  font-size: 1rem; font-weight: 700;
+  cursor: pointer; display: flex;
+  align-items: center; justify-content: center;
+  transition: background .1s, color .1s; flex-shrink: 0; line-height: 1;
+}
+.qty-btn:hover { background: var(--asphalt); color: var(--white); border-color: var(--asphalt); }
+.qty-btn:active { transform: scale(.93); }
+
+.price-display {
+  font-family: var(--display);
+  font-size: .9rem; font-weight: 700;
+  color: var(--muted); padding: 0 8px; white-space: nowrap;
+}
+
+.item-total-cell {
+  font-family: var(--display); font-size: .95rem; font-weight: 700;
+  color: var(--signal); white-space: nowrap; text-align: center;
+}
+.item-remove {
+  width: 28px; height: 28px; border: none; background: none;
+  color: var(--muted); cursor: pointer; border-radius: var(--r2);
+  display: flex; align-items: center; justify-content: center;
+  transition: color .12s, background .12s;
+}
+.item-remove:hover { color: var(--danger); background: var(--danger-bg); }
+.item-remove svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-width: 2; }
+
+/* ── Sidebar cards ── */
+.sb-card {
+  background: var(--white);
+  border: 1px solid var(--line-light);
+  border-radius: var(--r4); overflow: hidden;
+}
+.sb-card-title {
+  font-family: var(--display);
+  font-size: 1.05rem; font-weight: 700;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line-light);
+  display: flex; align-items: center; gap: 7px;
+}
+.sb-card-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+
+.sb-form-label { font-size: .64rem; font-weight: 600; color: var(--muted); margin-bottom: 4px; display: block; }
+.sb-input {
+  width: 100%; height: 40px; padding: 0 11px;
+  background: var(--paper); border: 1px solid var(--line-light);
+  border-radius: var(--r2); color: var(--ink);
+  font-family: var(--arabic); font-size: .82rem; outline: none;
+  transition: border-color .13s;
+}
+.sb-input:focus { border-color: var(--signal); background: var(--white); }
+.sb-input::placeholder { color: var(--steel); }
+
+/* ── Total hero ── */
+.total-hero {
+  background: var(--asphalt); border-radius: var(--r4);
+  padding: 18px 16px 14px; color: var(--white);
+}
+.th-label { font-size: .62rem; color: var(--steel); margin-bottom: 4px; display: block; }
+.th-value { font-family: var(--display); font-size: 2.4rem; font-weight: 800; letter-spacing: -.04em; line-height: .9; }
+.th-divider { height: 1px; background: var(--line-dark); margin: 12px 0; }
+.th-row { display: flex; justify-content: space-between; font-size: .72rem; margin-bottom: 6px; }
+.th-row:last-child { margin-bottom: 0; }
+.th-row-label { color: var(--steel); }
+.th-row-value { font-weight: 600; color: var(--white); }
+
+.discount-wrap { position: relative; }
+.discount-wrap .sb-input { padding-left: 40px; }
+.discount-currency {
+  position: absolute; top: 50%; left: 10px;
+  transform: translateY(-50%);
+  font-size: .7rem; color: var(--muted); pointer-events: none;
+}
+
+/* ── Empty state ── */
+.items-empty {
+  padding: 44px 20px; text-align: center; color: var(--muted); font-size: .78rem;
+}
+.items-empty svg {
+  width: 44px; height: 44px; fill: none; stroke: var(--steel);
+  stroke-linecap: round; stroke-width: 1.4;
+  margin: 0 auto 14px; display: block; opacity: .5;
+}
+
+/* Add flash animation on product added */
+@keyframes addFlash {
+  0%   { background: rgba(255,92,53,.18); }
+  100% { background: transparent; }
+}
+.row-flash { animation: addFlash .5s ease-out; }
+
+@media (max-width: 1000px) {
+  .pos-layout { grid-template-columns: 1fr; }
+  .pos-sidebar { position: static; }
+}
+</style>
+{% endblock %}
+
+{% block topbar_pre %}المبيعات{% endblock %}
+{% block topbar_title %}فاتورة جديدة{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('sales_list') }}" class="btn btn-secondary">
+  <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+  الفواتير
+</a>
+{% endblock %}
+
+{% block content %}
+
+<form method="POST" action="{{ url_for('sales_new') }}" id="sale-form" novalidate>
+
+  <div class="pos-layout">
+
+    <!-- ══ LEFT: Product picker + items ══ -->
+    <div style="display:flex;flex-direction:column;gap:14px">
+
+      <!-- Search bar -->
+      <div class="panel">
+        <div class="panel-body" style="padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+
+          <!-- Category pills -->
+          {% if categories %}
+          <div class="cat-pills">
+            <button type="button" class="cat-pill active" data-cat="all" onclick="filterCat(this,'all')">الكل</button>
+            {% for c in categories %}
+            <button type="button" class="cat-pill" data-cat="{{ c.id }}" onclick="filterCat(this,'{{ c.id }}')">{{ c.name }}</button>
+            {% endfor %}
+          </div>
+          {% endif %}
+
+          <!-- Search input -->
+          <div class="pos-search-wrap">
+            <input class="pos-search-input"
+                   type="search"
+                   id="prod-search"
+                   placeholder="🔍  ابحث بالاسم، الباركود، الفئة… أو امسح مباشرة"
+                   autocomplete="off"
+                   autofocus
+                   oninput="onSearchInput(this.value)"
+                   onkeydown="onSearchKey(event)"
+                   onfocus="openDropdown()"
+                   onblur="scheduleClose()"/>
+            <div class="pos-search-icon">
+              <svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg>
+            </div>
+            <div class="pos-dropdown" id="prod-dropdown"></div>
+          </div>
+
+          <div style="font-size:.6rem;color:var(--muted);display:flex;align-items:center;gap:5px">
+            <svg viewBox="0 0 24 24" style="width:12px;height:12px;fill:none;stroke:currentColor;stroke-linecap:round;stroke-width:1.8">
+              <path d="M3 5a2 2 0 0 1 2-2h2M3 19a2 2 0 0 0 2 2h2M19 5a2 2 0 0 0-2-2h-2M19 19a2 2 0 0 1-2 2h-2"/>
+              <line x1="7" y1="12" x2="7" y2="12.01"/><line x1="10" y1="8" x2="10" y2="16"/>
+              <line x1="13" y1="10" x2="13" y2="14"/><line x1="16" y1="8" x2="16" y2="16"/>
+            </svg>
+            يمكن استخدام ماسح الباركود USB مباشرة · اضغط ↑↓ للتنقل · Enter للإضافة
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Items table -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">بنود الفاتورة</span>
+          <span class="panel-count" id="items-count-label">0 بنود</span>
+        </div>
+
+        <div id="empty-items">
+          <div class="items-empty">
+            <svg viewBox="0 0 24 24">
+              <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+            </svg>
+            ابحث عن منتج بالأعلى أو امسح الباركود لإضافته للفاتورة
+          </div>
+        </div>
+
+        <div class="table-wrap" id="items-table-wrap" hidden>
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th>المنتج</th>
+                <th style="text-align:center">الكمية</th>
+                <th style="text-align:center">سعر البيع</th>
+                <th style="text-align:center;color:#b56a00">سعر الشراء</th>
+                <th style="text-align:center">الإجمالي</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="items-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div><!-- /left -->
+
+    <!-- ══ RIGHT SIDEBAR ══ -->
+    <div class="pos-sidebar">
+
+      <div class="total-hero">
+        <span class="th-label">الإجمالي النهائي</span>
+        <div class="th-value" id="disp-total">0.00</div>
+        <div style="font-size:.65rem;color:var(--steel);margin-top:4px">{{ currency }}</div>
+        <div class="th-divider"></div>
+        <div class="th-row">
+          <span class="th-row-label">المجموع الفرعي</span>
+          <span class="th-row-value" id="disp-subtotal">0.00</span>
+        </div>
+        <div class="th-row">
+          <span class="th-row-label">الخصم</span>
+          <span class="th-row-value" id="disp-discount">0.00</span>
+        </div>
+        <div class="th-row">
+          <span class="th-row-label">عدد الأصناف</span>
+          <span class="th-row-value" id="disp-items-count">0</span>
+        </div>
+      </div>
+
+      <div class="sb-card">
+        <div class="sb-card-title">
+          <svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:none;stroke:var(--signal);stroke-linecap:round;stroke-width:2">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+          </svg>
+          الزبون
+        </div>
+        <div class="sb-card-body">
+          <div>
+            <label class="sb-form-label">اسم الزبون</label>
+            <input class="sb-input" type="text" name="customer_name"
+                   placeholder="زبون نقدي" value="زبون نقدي"/>
+          </div>
+          <div>
+            <label class="sb-form-label">ملاحظات</label>
+            <input class="sb-input" type="text" name="notes" placeholder="اختياري…"/>
+          </div>
+        </div>
+      </div>
+
+      <div class="sb-card">
+        <div class="sb-card-title">
+          <svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:none;stroke:var(--signal);stroke-linecap:round;stroke-width:2">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+          </svg>
+          الخصم
+        </div>
+        <div class="sb-card-body">
+          <div>
+            <label class="sb-form-label">مبلغ الخصم</label>
+            <div class="discount-wrap">
+              <input class="sb-input" type="number" name="discount" id="discount-input"
+                     min="0" step="0.01" value="0"
+                     oninput="recalc()" placeholder="0.00"/>
+              <span class="discount-currency">{{ currency }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn btn-primary btn-lg" type="submit"
+              id="submit-btn" disabled
+              style="width:100%;justify-content:center">
+        <svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v14a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        حفظ الفاتورة
+      </button>
+
+      <a href="{{ url_for('sales_list') }}"
+         class="btn btn-secondary" style="width:100%;justify-content:center">
+        إلغاء
+      </a>
+
+    </div><!-- /sidebar -->
+
+  </div><!-- /layout -->
+
+</form>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ─── Data & State ───────────────────────────────────────
+const PRODUCTS = {{ products | tojson }};
+const CURRENCY = "{{ currency }}";
+
+var cart       = {};
+var activeCat  = 'all';
+var hlIndex    = -1;
+var closeTimer = null;
+var recentIds  = [];   // recently added product ids (session)
+
+// ─── Audio feedback ─────────────────────────────────────
+var _audio = null;
+function playAdd() {
+  try {
+    if (!_audio) {
+      _audio = new Audio('/static/sound.mp3');
+      _audio.volume = 0.35;
+    }
+    _audio.currentTime = 0;
+    _audio.play().catch(function(){});
+  } catch(e){}
+}
+
+// ─── Arabic normalizer (ة→ه, ى→ي, أإآ→ا) ─────────────
+function normalizeAr(s) {
+  return (s || '').toLowerCase()
+    .replace(/[أإآ]/g, 'ا')
+    .replace(/ة/g, 'ه')
+    .replace(/ى/g, 'ي')
+    .replace(/\s+/g, ' ').trim();
+}
+
+// ─── Smart scoring ──────────────────────────────────────
+function scoreProduct(p, q) {
+  if (!q) return 1;  // no query → all equal
+  var nq   = normalizeAr(q);
+  var name = normalizeAr(p.name);
+  var bc   = (p.barcode || '').toLowerCase();
+  var cat  = normalizeAr(p.category || '');
+
+  var score = 0;
+
+  // Barcode: exact = highest priority (barcode scanner)
+  if (bc === q.toLowerCase())         score += 1000;
+  else if (bc.indexOf(q.toLowerCase()) === 0) score += 500;
+  else if (bc.indexOf(q.toLowerCase()) !== -1) score += 200;
+
+  // Name exact
+  if (name === nq)                    score += 400;
+  else if (name.indexOf(nq) === 0)    score += 300;  // starts with
+  else if (name.indexOf(nq) !== -1)   score += 200;  // contains
+  else {
+    // Word-level: any word in name starts with any word in query
+    var nqWords = nq.split(' ');
+    var nameWords = name.split(' ');
+    nqWords.forEach(function(qw) {
+      if (!qw) return;
+      nameWords.forEach(function(nw) {
+        if (nw.indexOf(qw) === 0) score += 80;
+        else if (nw.indexOf(qw) !== -1) score += 40;
+      });
+    });
+  }
+
+  // Category boost
+  if (cat.indexOf(nq) !== -1)         score += 30;
+
+  return score;
+}
+
+// ─── Highlight matching text ─────────────────────────────
+function highlight(text, q) {
+  if (!q || q.length < 1) return escHtml(text);
+  var nq = normalizeAr(q);
+  var nt = normalizeAr(text);
+  var idx = nt.indexOf(nq);
+  if (idx === -1) return escHtml(text);
+  return escHtml(text.slice(0, idx)) +
+    '<mark>' + escHtml(text.slice(idx, idx + q.length)) + '</mark>' +
+    escHtml(text.slice(idx + q.length));
+}
+
+function escHtml(s) {
+  return (s || '').replace(/&/g,'&').replace(/</g,'<').replace(/>/g,'>');
+}
+
+// ─── Category filter ────────────────────────────────────
+function filterCat(btn, catId) {
+  activeCat = catId;
+  document.querySelectorAll('.cat-pill').forEach(function(p){ p.classList.remove('active'); });
+  btn.classList.add('active');
+  renderDropdown(document.getElementById('prod-search').value);
+  openDropdown();
+}
+
+// ─── Filter + rank ───────────────────────────────────────
+function filteredProducts(q) {
+  var nq = normalizeAr(q);
+  var results = PRODUCTS.filter(function(p) {
+    var matchCat = activeCat === 'all' || String(p.category_id) === String(activeCat);
+    if (!matchCat) return false;
+    if (!q) return true;
+    var score = scoreProduct(p, q);
+    p._score = score;
+    return score > 0;
+  });
+
+  if (q) {
+    results.sort(function(a, b) { return (b._score || 0) - (a._score || 0); });
+  }
+
+  return results;
+}
+
+// ─── Render dropdown ────────────────────────────────────
+function renderDropdown(q) {
+  var dd   = document.getElementById('prod-dropdown');
+  var list = filteredProducts(q);
+  hlIndex  = -1;
+  var html = '';
+
+  if (!q && recentIds.length > 0) {
+    // Show recently added at top
+    var recentProds = recentIds
+      .map(function(id){ return PRODUCTS.find(function(p){ return p.id===id; }); })
+      .filter(Boolean).slice(0,4);
+    if (recentProds.length) {
+      html += '<div class="pd-section">🕐 أضيف مؤخراً</div>';
+      recentProds.forEach(function(p, i) {
+        html += buildItem(p, q, 'recent-' + i);
+      });
+    }
+  }
+
+  if (!list.length && q) {
+    html += '<div class="pd-empty"><div class="pd-empty-icon">🔍</div>لا توجد منتجات مطابقة لـ «' + escHtml(q) + '»</div>';
+    dd.innerHTML = html;
+    return;
+  }
+
+  var showHeader = true;
+  if (q) {
+    html += '<div class="pd-header"><span>' + list.length + ' نتيجة</span><span class="pd-shortcut">↑↓ Enter · Esc للإغلاق</span></div>';
+    showHeader = false;
+  } else if (!recentIds.length) {
+    html += '<div class="pd-header"><span>كل المنتجات — ' + list.length + '</span><span class="pd-shortcut">↑↓ Enter</span></div>';
+  }
+
+  list.slice(0, 70).forEach(function(p, i) {
+    html += buildItem(p, q, i);
+  });
+
+  dd.innerHTML = html;
+}
+
+function buildItem(p, q, idx) {
+  var initials = p.name.trim().charAt(0);
+  var qty      = parseFloat(p.quantity);
+  var dotCls   = qty <= 0 ? 'zero' : (qty <= (p.alert_threshold || 5) ? 'low' : '');
+  var qtyStr   = qty % 1 === 0 ? qty.toFixed(0) : qty.toFixed(1);
+  var nameHtml = highlight(p.name, q);
+  var bcHtml   = p.barcode ? '<span class="pd-bc">' + escHtml(p.barcode) + '</span>' : '';
+  var catHtml  = p.category ? '<span class="pd-cat-badge">' + escHtml(p.category) + '</span>' : '';
+
+  return '<div class="pd-item" data-pid="' + p.id + '" data-idx="' + idx + '"' +
+    ' onmousedown="event.preventDefault();addItem(' + p.id + ')">' +
+    '<div class="pd-icon">' + escHtml(initials) + '</div>' +
+    '<div style="flex:1;min-width:0">' +
+      '<div class="pd-name">' + nameHtml + '</div>' +
+      '<div class="pd-meta">' + catHtml + (p.unit ? '<span>· ' + escHtml(p.unit) + '</span>' : '') + bcHtml + '</div>' +
+    '</div>' +
+    '<div class="pd-right">' +
+      '<div class="pd-price">' + parseFloat(p.sell_price).toFixed(2) + ' ' + CURRENCY + '</div>' +
+      '<div class="pd-stock"><span class="pd-stock-dot ' + dotCls + '"></span>' + qtyStr + ' متاح</div>' +
+    '</div>' +
+    '<button class="pd-add-btn" type="button" title="إضافة للفاتورة" onmousedown="event.preventDefault();event.stopPropagation();addItem(' + p.id + ')">+</button>' +
+  '</div>';
+}
+
+// ─── Open / close ────────────────────────────────────────
+function openDropdown() {
+  cancelClose();
+  renderDropdown(document.getElementById('prod-search').value);
+  positionDropdown();
+  document.getElementById('prod-dropdown').classList.add('open');
+}
+
+function positionDropdown() {
+  var inp  = document.getElementById('prod-search');
+  var dd   = document.getElementById('prod-dropdown');
+  var rect = inp.getBoundingClientRect();
+  dd.style.top   = (rect.bottom + 6) + 'px';
+  dd.style.left  = rect.left + 'px';
+  dd.style.width = Math.max(420, rect.width) + 'px';
+}
+
+function closeDropdown() {
+  document.getElementById('prod-dropdown').classList.remove('open');
+  hlIndex = -1;
+}
+
+function scheduleClose() { closeTimer = setTimeout(closeDropdown, 200); }
+function cancelClose()   { if (closeTimer) { clearTimeout(closeTimer); closeTimer = null; } }
+
+// ─── Search input handler ────────────────────────────────
+function onSearchInput(val) {
+  renderDropdown(val);
+  document.getElementById('prod-dropdown').classList.add('open');
+
+  var trimmed = val.trim();
+  if (trimmed.length < 2) return;
+
+  // Exact barcode → auto-add instantly (barcode scanner UX)
+  var exact = PRODUCTS.find(function(p) {
+    return p.barcode && p.barcode.trim().toLowerCase() === trimmed.toLowerCase();
+  });
+  if (exact) {
+    addItem(exact.id);
+    document.getElementById('prod-search').value = '';
+    renderDropdown('');
+    closeDropdown();
+    return;
+  }
+
+  // Single long numeric → barcode
+  var list = filteredProducts(trimmed);
+  if (list.length === 1 && /^\d{6,}$/.test(trimmed)) {
+    addItem(list[0].id);
+    document.getElementById('prod-search').value = '';
+    renderDropdown('');
+    closeDropdown();
+  }
+}
+
+// ─── Keyboard navigation ─────────────────────────────────
+function onSearchKey(e) {
+  var dd    = document.getElementById('prod-dropdown');
+  var items = dd.querySelectorAll('.pd-item');
+
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    hlIndex = Math.min(hlIndex + 1, items.length - 1);
+    highlightItem(items);
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    hlIndex = Math.max(hlIndex - 1, 0);
+    highlightItem(items);
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    cancelClose();
+    if (hlIndex >= 0 && items[hlIndex]) {
+      addItem(parseInt(items[hlIndex].dataset.pid));
+    } else {
+      var list = filteredProducts(document.getElementById('prod-search').value.trim());
+      if (list.length > 0) addItem(list[0].id);
+    }
+    document.getElementById('prod-search').value = '';
+    renderDropdown('');
+    closeDropdown();
+  } else if (e.key === 'Escape') {
+    closeDropdown();
+    document.getElementById('prod-search').value = '';
+    renderDropdown('');
+  }
+}
+
+function highlightItem(items) {
+  items.forEach(function(el){ el.classList.remove('highlighted'); });
+  if (hlIndex >= 0 && items[hlIndex]) {
+    items[hlIndex].classList.add('highlighted');
+    items[hlIndex].scrollIntoView({ block: 'nearest' });
+  }
+}
+
+// ─── Add item to cart ────────────────────────────────────
+function addItem(productId) {
+  cancelClose();
+  var p = PRODUCTS.find(function(x){ return x.id === productId; });
+  if (!p) return;
+
+  if (cart[productId]) {
+    cart[productId].qty += 1;
+    refreshRow(productId);
+  } else {
+    cart[productId] = { product: p, qty: 1, price: p.sell_price };
+    appendRow(productId);
+  }
+
+  recalc();
+  updateUI();
+  playAdd();
+
+  // Track recently added
+  recentIds = recentIds.filter(function(id){ return id !== productId; });
+  recentIds.unshift(productId);
+  if (recentIds.length > 8) recentIds.pop();
+
+  document.getElementById('prod-search').value = '';
+  renderDropdown('');
+  closeDropdown();
+  setTimeout(function(){ document.getElementById('prod-search').focus(); }, 50);
+}
+
+function appendRow(productId) {
+  var item  = cart[productId];
+  var p     = item.product;
+  var tbody = document.getElementById('items-tbody');
+  var tr    = document.createElement('tr');
+  tr.id     = 'row-' + productId;
+  tr.className = 'row-flash';
+
+  tr.innerHTML =
+    '<td class="item-name-cell">' +
+      escHtml(p.name) +
+      '<span class="item-unit">' + escHtml(p.unit) + '</span>' +
+      (p.barcode ? '<span class="item-bc-sm">' + escHtml(p.barcode) + '</span>' : '') +
+      '<input type="hidden" name="items[' + productId + '][product_id]" value="' + p.id + '">' +
+      '<input type="hidden" id="price-' + productId + '" name="items[' + productId + '][price]" value="' + parseFloat(item.price).toFixed(2) + '">' +
+    '</td>' +
+    '<td style="text-align:center">' +
+      '<div class="qty-stepper">' +
+        '<button type="button" class="qty-btn" onclick="stepQty(' + productId + ',-1)">−</button>' +
+        '<input class="item-input" type="number" min="1" step="1"' +
+          ' id="qty-' + productId + '" name="items[' + productId + '][quantity]"' +
+          ' value="' + item.qty + '"' +
+          ' oninput="updateQty(' + productId + ',this.value)">' +
+        '<button type="button" class="qty-btn" onclick="stepQty(' + productId + ',1)">+</button>' +
+      '</div>' +
+    '</td>' +
+    '<td style="text-align:center">' +
+      '<span class="price-display">' + parseFloat(item.price).toFixed(2) + ' ' + CURRENCY + '</span>' +
+    '</td>' +
+    '<td style="text-align:center">' +
+      '<span style="font-family:var(--display);font-size:.88rem;font-weight:700;color:#b56a00;background:rgba(181,106,0,.1);padding:3px 8px;border-radius:6px;white-space:nowrap">' +
+        parseFloat(p.buy_price).toFixed(2) + ' ' + CURRENCY +
+      '</span>' +
+    '</td>' +
+    '<td class="item-total-cell" id="total-' + productId + '">' +
+      (item.qty * item.price).toFixed(2) +
+    '</td>' +
+    '<td>' +
+      '<button class="item-remove" type="button" onclick="removeItem(' + productId + ')">' +
+        '<svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
+      '</button>' +
+    '</td>';
+
+  tbody.appendChild(tr);
+}
+
+function refreshRow(pid) {
+  var item = cart[pid];
+  var el   = document.getElementById('qty-' + pid);
+  if (el) el.value = item.qty;
+  updateRowTotal(pid);
+  // Flash the row
+  var row = document.getElementById('row-' + pid);
+  if (row) { row.classList.remove('row-flash'); void row.offsetWidth; row.classList.add('row-flash'); }
+}
+
+function updateQty(pid, val) {
+  if (!cart[pid]) return;
+  cart[pid].qty = parseFloat(val) || 0;
+  updateRowTotal(pid); recalc();
+}
+
+function stepQty(pid, delta) {
+  if (!cart[pid]) return;
+  var newQty = Math.max(1, cart[pid].qty + delta);
+  cart[pid].qty = newQty;
+  var el = document.getElementById('qty-' + pid);
+  if (el) el.value = newQty;
+  updateRowTotal(pid); recalc();
+}
+
+function updateRowTotal(pid) {
+  var item = cart[pid];
+  var cell = document.getElementById('total-' + pid);
+  if (cell) cell.textContent = (item.qty * item.price).toFixed(2);
+}
+
+function removeItem(pid) {
+  delete cart[pid];
+  var row = document.getElementById('row-' + pid);
+  if (row) row.remove();
+  recalc(); updateUI();
+}
+
+// ─── Recalc totals ───────────────────────────────────────
+function recalc() {
+  var subtotal = 0;
+  Object.values(cart).forEach(function(item){ subtotal += item.qty * item.price; });
+  var discount = parseFloat(document.getElementById('discount-input').value) || 0;
+  var total    = Math.max(0, subtotal - discount);
+  var count    = Object.keys(cart).length;
+
+  document.getElementById('disp-subtotal').textContent    = subtotal.toFixed(2);
+  document.getElementById('disp-discount').textContent    = discount.toFixed(2);
+  document.getElementById('disp-total').textContent       = total.toFixed(2);
+  document.getElementById('disp-items-count').textContent = count;
+  document.getElementById('items-count-label').textContent = count + ' بنود';
+  document.getElementById('submit-btn').disabled = count === 0;
+}
+
+function updateUI() {
+  var has = Object.keys(cart).length > 0;
+  document.getElementById('empty-items').hidden      = has;
+  document.getElementById('items-table-wrap').hidden = !has;
+}
+
+// ─── Submit: reindex form fields ─────────────────────────
+document.getElementById('sale-form').addEventListener('submit', function() {
+  var idx = 0;
+  Object.values(cart).forEach(function(item) {
+    var row = document.getElementById('row-' + item.product.id);
+    if (row) {
+      row.querySelectorAll('input[name]').forEach(function(inp) {
+        inp.name = inp.name.replace(/items\[\d+\]/, 'items[' + idx + ']');
+      });
+    }
+    idx++;
+  });
+});
+
+// ─── Reposition on scroll/resize ─────────────────────────
+window.addEventListener('scroll', positionDropdown, true);
+window.addEventListener('resize', positionDropdown);
+
+// ─── Fix sticky sidebar overflow ─────────────────────────
+(function() {
+  var el = document.querySelector('.pos-sidebar');
+  if (!el) return;
+  var parent = el.parentElement;
+  while (parent && parent !== document.body) {
+    var style = window.getComputedStyle(parent);
+    var ov = style.overflow + style.overflowY + style.overflowX;
+    if (/auto|scroll|hidden/.test(ov)) parent.style.overflow = 'visible';
+    parent = parent.parentElement;
+  }
+})();
+
+// ─── Init ────────────────────────────────────────────────
+renderDropdown('');
+</script>
+{% endblock %}

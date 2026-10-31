@@ -1,0 +1,345 @@
+{% extends 'base.html' %}
+
+{% block title %}سجل الفواتير — {{ settings_get('shop_name','RUN X') }}{% endblock %}
+
+{% block extra_head %}
+<style>
+.summary-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-bottom: 20px;
+}
+@media (max-width: 700px) {
+  .summary-strip { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 460px) {
+  .summary-strip { grid-template-columns: 1fr; }
+}
+
+.invoice-no {
+  font-family: var(--display);
+  font-size: .88rem;
+  font-weight: 700;
+  letter-spacing: -.01em;
+  color: var(--ink);
+}
+.type-dot {
+  display: inline-block;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  margin-left: 5px;
+  vertical-align: middle;
+}
+</style>
+{% endblock %}
+
+{% block topbar_pre %}الفواتير{% endblock %}
+{% block topbar_title %}سجل الفواتير{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('sales_new') }}" class="btn btn-primary">
+  <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+  فاتورة جديدة
+</a>
+{% endblock %}
+
+{% block content %}
+
+<!-- Summary strip -->
+<div class="summary-strip">
+
+  <div class="stat-card">
+    <div class="stat-card-accent" style="background:var(--instrument)"></div>
+    <span class="stat-card-label">عدد الفواتير</span>
+    <span class="stat-card-value stat-instrument">{{ filter_count }}</span>
+    <span class="stat-card-sub">في النطاق المحدد</span>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-card-accent" style="background:var(--signal)"></div>
+    <span class="stat-card-label">إجمالي المبيعات</span>
+    <span class="stat-card-value stat-signal">{{ "%.2f"|format(filter_total) }}</span>
+    <span class="stat-card-sub">{{ currency }}</span>
+  </div>
+
+  {% if current_user.is_admin and filter_profit is not none %}
+  <div class="stat-card">
+    <div class="stat-card-accent" style="background:var(--success)"></div>
+    <span class="stat-card-label">إجمالي الأرباح</span>
+    <span class="stat-card-value stat-success">{{ "%.2f"|format(filter_profit) }}</span>
+    <span class="stat-card-sub">{{ currency }}</span>
+  </div>
+  {% else %}
+  <div class="stat-card">
+    <div class="stat-card-accent" style="background:var(--muted)"></div>
+    <span class="stat-card-label">متوسط الفاتورة</span>
+    <span class="stat-card-value" style="color:var(--ink)">
+      {% if filter_count > 0 %}{{ "%.2f"|format(filter_total / filter_count) }}{% else %}0.00{% endif %}
+    </span>
+    <span class="stat-card-sub">{{ currency }}</span>
+  </div>
+  {% endif %}
+
+</div>
+
+<!-- Main panel -->
+<div class="panel">
+
+  <!-- Filter bar -->
+  <form method="GET" action="{{ url_for('sales_list') }}">
+    <div class="filter-bar">
+
+      <div class="search-bar" style="max-width:260px">
+        <svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg>
+        <input
+          class="form-control"
+          type="search"
+          name="q"
+          value="{{ search }}"
+          placeholder="بحث برقم أو اسم الزبون…"
+        />
+      </div>
+
+      <input
+        class="form-control"
+        type="date"
+        name="date_from"
+        value="{{ date_from }}"
+        style="width:160px"
+        title="من تاريخ"
+      />
+
+      <input
+        class="form-control"
+        type="date"
+        name="date_to"
+        value="{{ date_to }}"
+        style="width:160px"
+        title="إلى تاريخ"
+      />
+
+      <button class="btn btn-dark btn-sm" type="submit">
+        <svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg>
+        بحث
+      </button>
+
+      {% if search or date_from or date_to %}
+      <a href="{{ url_for('sales_list') }}" class="btn btn-secondary btn-sm">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        مسح
+      </a>
+      {% endif %}
+
+      <!-- Quick date shortcuts -->
+      <div style="display:flex;gap:6px;margin-right:auto;flex-wrap:wrap">
+        {% set today_str = '' %}
+        {% set today_obj = namespace(d=none) %}
+        <a href="{{ url_for('sales_list', date_from=date_from, date_to=date_to) }}"
+           onclick="setToday(event)"
+           class="btn btn-secondary btn-sm">اليوم</a>
+        <a href="{{ url_for('sales_list') }}?date_from={{ '' }}&date_to={{ '' }}"
+           onclick="setMonth(event)"
+           class="btn btn-secondary btn-sm">هذا الشهر</a>
+      </div>
+
+    </div>
+  </form>
+
+  <!-- Table -->
+  {% if sales.items %}
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>رقم الفاتورة</th>
+          <th>الزبون</th>
+          <th>النوع</th>
+          <th>الإجمالي</th>
+          <th>الخصم</th>
+          {% if current_user.is_admin %}<th>الربح</th>{% endif %}
+          {% if current_user.is_admin %}<th>المندوب</th>{% endif %}
+          <th>التاريخ</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in sales.items %}
+        <tr>
+          <td>
+            <span class="invoice-no">{{ s.invoice_no }}</span>
+          </td>
+          <td class="td-strong">{{ s.customer_name }}</td>
+          <td>
+            {% if s.sale_type == 'oil_change' %}
+            <span class="badge badge-success">تغيير زيت</span>
+            {% else %}
+            <span class="badge badge-muted">بيع</span>
+            {% endif %}
+          </td>
+          <td>
+            <span class="td-num text-signal">{{ "%.2f"|format(s.total) }}</span>
+            <span class="text-xs text-muted"> {{ currency }}</span>
+          </td>
+          <td class="td-muted text-sm">
+            {% if s.discount > 0 %}
+            <span class="text-warning">{{ "%.2f"|format(s.discount) }}</span>
+            {% else %}—{% endif %}
+          </td>
+          {% if current_user.is_admin %}
+          <td class="td-num text-sm {% if s.profit >= 0 %}text-success{% else %}text-danger{% endif %}">
+            {{ "%.2f"|format(s.profit) }}
+          </td>
+          {% endif %}
+          {% if current_user.is_admin %}
+          <td class="td-muted text-xs">{{ s.user.full_name or s.user.username if s.user else '—' }}</td>
+          {% endif %}
+          <td class="td-muted text-xs nowrap">
+            {{ s.sale_date.strftime('%Y/%m/%d') }}<br>
+            <span style="font-size:.58rem">{{ s.sale_date.strftime('%H:%M') }}</span>
+          </td>
+          <td>
+            <div style="display:flex;gap:5px;align-items:center">
+              <a href="{{ url_for('sales_detail', sid=s.id) }}"
+                 class="btn btn-secondary btn-icon-sm"
+                 title="عرض">
+                <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-linecap:round;stroke-width:2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+              </a>
+              {% if current_user.is_admin %}
+              <button
+                class="btn btn-danger btn-icon-sm"
+                type="button"
+                title="حذف"
+                onclick="confirmDelete({{ s.id }}, '{{ s.invoice_no }}')">
+                <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-linecap:round;stroke-width:2">
+                  <polyline points="3 6 5 6 21 6"/>
+                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                  <path d="M10 11v6M14 11v6"/>
+                </svg>
+              </button>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  {% if sales.pages > 1 %}
+  <div class="pagination">
+    <a href="{{ url_for('sales_list', page=sales.prev_num, q=search, date_from=date_from, date_to=date_to) }}"
+       class="page-link {% if not sales.has_prev %}disabled{% endif %}">
+      <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-linecap:round;stroke-width:2">
+        <polyline points="9 18 15 12 9 6"/>
+      </svg>
+    </a>
+
+    {% for p in sales.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+      {% if p %}
+      <a href="{{ url_for('sales_list', page=p, q=search, date_from=date_from, date_to=date_to) }}"
+         class="page-link {% if p == sales.page %}active{% endif %}">{{ p }}</a>
+      {% else %}
+      <span class="page-link disabled">…</span>
+      {% endif %}
+    {% endfor %}
+
+    <a href="{{ url_for('sales_list', page=sales.next_num, q=search, date_from=date_from, date_to=date_to) }}"
+       class="page-link {% if not sales.has_next %}disabled{% endif %}">
+      <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-linecap:round;stroke-width:2">
+        <polyline points="15 18 9 12 15 6"/>
+      </svg>
+    </a>
+
+    <span class="text-xs text-muted" style="margin-right:8px">
+      {{ sales.total }} فاتورة · صفحة {{ sales.page }} من {{ sales.pages }}
+    </span>
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div class="panel-body">
+    <div class="empty-state">
+      <svg viewBox="0 0 24 24">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <line x1="16" y1="13" x2="8" y2="13"/>
+        <line x1="16" y1="17" x2="8" y2="17"/>
+      </svg>
+      <div class="empty-state-title">لا توجد فواتير</div>
+      <div class="empty-state-sub">
+        {% if search or date_from or date_to %}
+        لا توجد نتائج تطابق البحث — جرّب تغيير الفلتر
+        {% else %}
+        سجّل أول فاتورة الآن
+        {% endif %}
+      </div>
+      {% if not search and not date_from and not date_to %}
+      <a href="{{ url_for('sales_new') }}" class="btn btn-primary btn-sm">
+        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        فاتورة جديدة
+      </a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+</div><!-- /panel -->
+
+<!-- Delete confirm modal -->
+<div class="modal-overlay" id="delete-modal" onclick="if(event.target===this)hideModal('delete-modal')">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title">تأكيد الحذف</h3>
+      <button class="modal-close" onclick="hideModal('delete-modal')" type="button">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:.82rem;color:var(--muted);line-height:1.6">
+        هل أنت متأكد من حذف الفاتورة
+        <strong id="del-inv-no" style="color:var(--ink)"></strong> ؟<br>
+        سيتم إعادة الكميات إلى المخزون.
+      </p>
+    </div>
+    <div class="modal-footer">
+      <form id="delete-form" method="POST">
+        <button class="btn btn-danger" type="submit">
+          <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+          حذف
+        </button>
+      </form>
+      <button class="btn btn-secondary" onclick="hideModal('delete-modal')" type="button">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function confirmDelete(id, invNo) {
+  document.getElementById('del-inv-no').textContent = invNo;
+  document.getElementById('delete-form').action = '/sales/' + id + '/delete';
+  showModal('delete-modal');
+}
+
+// Quick date helpers
+function setToday(e) {
+  e.preventDefault();
+  var d = new Date().toISOString().slice(0,10);
+  window.location = '{{ url_for("sales_list") }}?date_from=' + d + '&date_to=' + d;
+}
+function setMonth(e) {
+  e.preventDefault();
+  var now = new Date();
+  var y = now.getFullYear(), m = String(now.getMonth()+1).padStart(2,'0');
+  var last = new Date(y, now.getMonth()+1, 0).getDate();
+  window.location = '{{ url_for("sales_list") }}?date_from=' + y + '-' + m + '-01&date_to=' + y + '-' + m + '-' + last;
+}
+</script>
+{% endblock %}

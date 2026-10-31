@@ -1,0 +1,482 @@
+{% extends 'base.html' %}
+
+{% block title %}تغيير زيت — {{ oc.car_plate }} — {{ settings_get('shop_name','RUN X') }}{% endblock %}
+
+{% block extra_head %}
+<style>
+.oc-detail-layout {
+  display: grid;
+  grid-template-columns: minmax(0,1.4fr) minmax(0,.8fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.oc-hero {
+  background:
+    radial-gradient(circle at 90% 10%, rgba(68,120,255,.18), transparent 35%),
+    var(--asphalt);
+  border-radius: var(--r4);
+  color: var(--white);
+  padding: 26px 26px 22px;
+  border: 1px solid rgba(255,255,255,.06);
+  margin-bottom: 16px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 20px;
+  align-items: center;
+}
+.oc-hero-plate {
+  font-family: var(--display);
+  font-size: 3rem; font-weight: 800;
+  letter-spacing: -.04em; line-height: .9; color: var(--white);
+}
+.oc-hero-model { font-size: .72rem; color: var(--steel); margin-top: 6px; }
+.oc-hero-status { text-align: center; }
+.oc-status-days {
+  font-family: var(--display);
+  font-size: 3.5rem; font-weight: 800;
+  letter-spacing: -.04em; line-height: .9;
+}
+.oc-status-label { font-size: .62rem; color: var(--steel); margin-top: 6px; }
+
+.km-gauge-wrap { padding: 16px 20px; border-bottom: 1px solid var(--line-light); }
+.km-gauge-labels { display: flex; justify-content: space-between; font-size: .62rem; color: var(--muted); margin-bottom: 6px; }
+.km-gauge-bar { height: 10px; background: var(--line-light); border-radius: 5px; overflow: hidden; }
+.km-gauge-fill { height: 100%; border-radius: 5px; transition: width .5s ease; }
+.km-gauge-pct { font-size: .65rem; color: var(--muted); margin-top: 5px; text-align: center; }
+
+.info-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--line-light); }
+.info-cell { padding: 14px 18px; background: var(--white); }
+.info-cell-label { font-size: .6rem; font-weight: 600; color: var(--muted); margin-bottom: 4px; display: block; }
+.info-cell-value { font-size: .85rem; font-weight: 600; color: var(--ink); }
+
+.timeline { padding: 0 20px; }
+.tl-item { display: flex; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--line-light); }
+.tl-item:last-child { border-bottom: none; }
+.tl-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--line-light); flex-shrink: 0; margin-top: 5px; }
+.tl-dot.current { background: var(--signal); box-shadow: 0 0 0 3px rgba(255,92,53,.2); }
+.tl-dot.past { background: var(--steel); }
+.tl-body { flex: 1; min-width: 0; }
+.tl-date { font-size: .68rem; font-weight: 700; color: var(--ink); margin-bottom: 3px; }
+.tl-meta { font-size: .62rem; color: var(--muted); line-height: 1.5; }
+.tl-km { font-family: var(--display); font-size: .85rem; font-weight: 700; color: var(--instrument); white-space: nowrap; }
+
+/* ─── PRINT: Oil Card ─── */
+@media print {
+  @page { size: 85mm 55mm; margin: 3mm; }
+
+  body * { visibility: hidden; }
+  .print-area, .print-area * { visibility: visible; }
+  .print-area { position: fixed; top: 0; left: 0; right: 0; width: 100%; }
+
+  .oil-card {
+    width: 79mm;
+    border: 1.5px solid #111;
+    border-radius: 3mm;
+    padding: 3mm 4mm;
+    font-family: 'Tajawal', sans-serif;
+    font-size: 10px;
+    direction: rtl;
+  }
+  .oc-card-header {
+    display: flex; justify-content: space-between; align-items: center;
+    border-bottom: 1px solid #555; padding-bottom: 2mm; margin-bottom: 2mm;
+  }
+  .oc-card-shop   { font-size: 11px; font-weight: 700; }
+  .oc-card-plate  { font-size: 14px; font-weight: 900; border: 1.5px solid #111; padding: 1mm 3mm; border-radius: 2mm; }
+  .oc-card-grid   { display: grid; grid-template-columns: 1fr 1fr; gap: 1mm 4mm; margin-bottom: 2mm; }
+  .oc-card-lbl    { font-size: 8px; color: #555; }
+  .oc-card-val    { font-size: 10px; font-weight: 700; }
+  .oc-card-next   {
+    background: #111; color: #fff;
+    text-align: center; padding: 1.5mm;
+    border-radius: 2mm; font-size: 11px; font-weight: 900;
+    margin-top: 2mm;
+  }
+  .oc-card-footer { text-align: center; font-size: 8px; color: #555; margin-top: 2mm; }
+}
+
+@media (max-width: 960px) {
+  .oc-detail-layout { grid-template-columns: 1fr; }
+  .oc-hero { grid-template-columns: 1fr; }
+  .oc-hero-status { text-align: right; }
+}
+@media (max-width: 560px) {
+  .info-grid-2 { grid-template-columns: 1fr; }
+}
+</style>
+{% endblock %}
+
+{% block topbar_pre %}تغيير الزيت{% endblock %}
+{% block topbar_title %}{{ oc.car_plate }}{% endblock %}
+
+{% block topbar_actions %}
+<button class="btn btn-secondary" onclick="printOilCard()">
+  <svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+  طباعة الكرت
+</button>
+<a href="{{ url_for('oil_change_edit', oid=oc.id) }}" class="btn btn-secondary">
+  <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
+  تعديل
+</a>
+<a href="{{ url_for('oil_change_new') }}?plate={{ oc.car_plate }}" class="btn btn-primary">
+  <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+  تغيير جديد
+</a>
+{% endblock %}
+
+{% block content %}
+
+{% if oc.next_change_date %}
+  {% set days_left = (oc.next_change_date - today).days %}
+{% else %}
+  {% set days_left = none %}
+{% endif %}
+
+<!-- ═══ PRINT AREA (Oil Card) ═══ -->
+<div class="print-area" style="display:none" id="print-area">
+  <div class="oil-card">
+    <div class="oc-card-header">
+      <div class="oc-card-shop">{{ settings_get('shop_name','RUN X') }}</div>
+      <div class="oc-card-plate">{{ oc.car_plate }}</div>
+    </div>
+
+    <div class="oc-card-grid">
+      <div>
+        <div class="oc-card-lbl">الزبون</div>
+        <div class="oc-card-val">{{ oc.customer_name }}</div>
+      </div>
+      <div>
+        <div class="oc-card-lbl">موديل السيارة</div>
+        <div class="oc-card-val">{{ oc.car_model or '—' }}</div>
+      </div>
+      <div>
+        <div class="oc-card-lbl">نوع الزيت</div>
+        <div class="oc-card-val">{{ oc.oil_type or '—' }}</div>
+      </div>
+      <div>
+        <div class="oc-card-lbl">الكمية</div>
+        <div class="oc-card-val">{{ oc.oil_qty }} لتر</div>
+      </div>
+      <div>
+        <div class="oc-card-lbl">العداد الحالي</div>
+        <div class="oc-card-val">{{ "{:,}".format(oc.km_at_change) }} كم</div>
+      </div>
+      <div>
+        <div class="oc-card-lbl">تاريخ التغيير</div>
+        <div class="oc-card-val">{{ oc.change_date.strftime('%Y/%m/%d') }}</div>
+      </div>
+    </div>
+
+    {% if oc.next_change_date or oc.next_change_km %}
+    <div class="oc-card-next">
+      التغيير القادم:
+      {% if oc.next_change_km %} {{ "{:,}".format(oc.next_change_km) }} كم {% endif %}
+      {% if oc.next_change_date %} — {{ oc.next_change_date.strftime('%Y/%m/%d') }} {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="oc-card-footer">{{ settings_get('shop_name','RUN X') }} · {{ settings_get('phone','') }}</div>
+  </div>
+</div>
+
+<!-- ═══ SCREEN VIEW ═══ -->
+
+<!-- Hero card -->
+<div class="oc-hero">
+  <div>
+    <div class="oc-hero-plate">{{ oc.car_plate }}</div>
+    <div class="oc-hero-model">
+      {% if oc.car_model %}{{ oc.car_model }} · {% endif %}
+      {{ oc.customer_name }}
+      {% if oc.customer_phone %}
+      · <a href="tel:{{ oc.customer_phone }}" style="color:#25d366">{{ oc.customer_phone }}</a>
+      {% endif %}
+    </div>
+    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+      {% if oc.oil_type %}
+      <span class="badge badge-muted no-dot" style="font-size:.65rem">{{ oc.oil_type }}</span>
+      {% endif %}
+      {% if oc.oil_qty > 0 %}
+      <span class="badge badge-instrument no-dot" style="font-size:.65rem">{{ oc.oil_qty }} لتر</span>
+      {% endif %}
+      {% if oc.sale %}
+      <a href="{{ url_for('sales_detail', sid=oc.sale_id) }}"
+         class="badge badge-signal no-dot" style="font-size:.65rem;text-decoration:none">
+        فاتورة {{ oc.sale.invoice_no }}
+      </a>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="oc-hero-status">
+    {% if days_left is not none %}
+      {% if days_left < 0 %}
+      <div class="oc-status-days" style="color:#f09090">{{ days_left|abs }}</div>
+      <div class="oc-status-label" style="color:#f09090">يوم متأخر</div>
+      {% elif days_left == 0 %}
+      <div class="oc-status-days" style="color:var(--signal)">اليوم</div>
+      <div class="oc-status-label">موعد التغيير</div>
+      {% elif days_left <= 7 %}
+      <div class="oc-status-days" style="color:#e6a630">{{ days_left }}</div>
+      <div class="oc-status-label">يوم متبقٍ</div>
+      {% else %}
+      <div class="oc-status-days" style="color:#7ec8a0">{{ days_left }}</div>
+      <div class="oc-status-label">يوم متبقٍ</div>
+      {% endif %}
+      <div style="font-size:.6rem;color:var(--steel);margin-top:6px">
+        {{ oc.next_change_date.strftime('%d/%m/%Y') }}
+      </div>
+    {% else %}
+    <div class="oc-status-days" style="color:var(--steel)">—</div>
+    <div class="oc-status-label">لا يوجد موعد</div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="oc-detail-layout">
+
+  <!-- LEFT -->
+  <div style="display:flex;flex-direction:column;gap:16px">
+
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">تفاصيل التغيير</span>
+        <span class="badge badge-muted no-dot" style="margin-right:6px">{{ oc.change_date.strftime('%Y/%m/%d') }}</span>
+      </div>
+
+      <!-- KM gauge -->
+      {% if oc.km_at_change > 0 and oc.next_change_km > 0 %}
+      <div class="km-gauge-wrap">
+        {% set km_pct = [[(oc.km_at_change / oc.next_change_km * 100)|int, 0]|max, 100]|min %}
+        <div class="km-gauge-labels">
+          <span>آخر تغيير: {{ "{:,}".format(oc.km_at_change) }} كم</span>
+          <span>القادم: {{ "{:,}".format(oc.next_change_km) }} كم</span>
+        </div>
+        <div class="km-gauge-bar">
+          <div class="km-gauge-fill"
+               style="width:{{ km_pct }}%;
+                      background:{% if km_pct >= 90 %}var(--danger){% elif km_pct >= 70 %}var(--warning){% else %}var(--success){% endif %}">
+          </div>
+        </div>
+        <div class="km-gauge-pct">{{ km_pct }}% · فترة التغيير: {{ "{:,}".format(oc.km_interval) }} كم</div>
+      </div>
+      {% endif %}
+
+      <!-- Info grid -->
+      <div class="info-grid-2">
+        <div class="info-cell">
+          <span class="info-cell-label">الزبون</span>
+          <div class="info-cell-value">{{ oc.customer_name }}</div>
+        </div>
+        <div class="info-cell">
+          <span class="info-cell-label">رقم الهاتف</span>
+          <div class="info-cell-value">
+            {% if oc.customer_phone %}
+            <a href="tel:{{ oc.customer_phone }}" style="color:var(--instrument)">{{ oc.customer_phone }}</a>
+            {% else %}—{% endif %}
+          </div>
+        </div>
+        <div class="info-cell">
+          <span class="info-cell-label">رقم اللوحة</span>
+          <div class="info-cell-value">
+            <a href="{{ url_for('oil_change_history', plate=oc.car_plate) }}"
+               class="badge badge-instrument no-dot" style="font-size:.75rem">{{ oc.car_plate }}</a>
+          </div>
+        </div>
+        <div class="info-cell">
+          <span class="info-cell-label">موديل السيارة</span>
+          <div class="info-cell-value">{{ oc.car_model or '—' }}</div>
+        </div>
+        <div class="info-cell">
+          <span class="info-cell-label">نوع الزيت</span>
+          <div class="info-cell-value">{{ oc.oil_type or '—' }}</div>
+        </div>
+        <div class="info-cell">
+          <span class="info-cell-label">كمية الزيت</span>
+          <div class="info-cell-value">{{ oc.oil_qty }} لتر</div>
+        </div>
+        <div class="info-cell">
+          <span class="info-cell-label">كم عند التغيير</span>
+          <div class="info-cell-value" style="font-family:var(--display)">{{ "{:,}".format(oc.km_at_change) }} كم</div>
+        </div>
+        <div class="info-cell">
+          <span class="info-cell-label">كم التغيير القادم</span>
+          <div class="info-cell-value" style="font-family:var(--display);color:var(--instrument)">{{ "{:,}".format(oc.next_change_km) }} كم</div>
+        </div>
+        <div class="info-cell">
+          <span class="info-cell-label">تاريخ التغيير</span>
+          <div class="info-cell-value">{{ oc.change_date.strftime('%Y/%m/%d') }}</div>
+        </div>
+        <div class="info-cell">
+          <span class="info-cell-label">الموعد القادم</span>
+          <div class="info-cell-value {% if days_left is not none and days_left < 0 %}text-danger{% elif days_left is not none and days_left <= 7 %}text-warning{% else %}text-success{% endif %}">
+            {% if oc.next_change_date %}{{ oc.next_change_date.strftime('%Y/%m/%d') }}{% else %}—{% endif %}
+          </div>
+        </div>
+        {% if oc.service_fee > 0 %}
+        <div class="info-cell">
+          <span class="info-cell-label">أجرة الخدمة</span>
+          <div class="info-cell-value text-signal" style="font-family:var(--display)">{{ "%.2f"|format(oc.service_fee) }} {{ currency }}</div>
+        </div>
+        {% endif %}
+        <div class="info-cell">
+          <span class="info-cell-label">المسجّل بواسطة</span>
+          <div class="info-cell-value text-sm">{{ oc.user.full_name or oc.user.username if oc.user else '—' }}</div>
+        </div>
+      </div>
+
+      {% if oc.notes %}
+      <div style="padding:14px 18px;border-top:1px solid var(--line-light)">
+        <span class="text-xs text-muted fw-6">ملاحظات: </span>
+        <span class="text-sm">{{ oc.notes }}</span>
+      </div>
+      {% endif %}
+
+      {% if oc.sale %}
+      <div style="padding:12px 18px;border-top:1px solid var(--line-light);display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <span class="text-xs text-muted">فاتورة مرتبطة: </span>
+          <span class="fw-6">{{ oc.sale.invoice_no }}</span>
+          <span class="text-xs text-muted"> — {{ "%.2f"|format(oc.sale.total) }} {{ currency }}</span>
+        </div>
+        <a href="{{ url_for('sales_detail', sid=oc.sale_id) }}" class="btn btn-secondary btn-sm">عرض الفاتورة</a>
+      </div>
+      {% endif %}
+    </div>
+
+  </div>
+
+  <!-- RIGHT -->
+  <div style="display:flex;flex-direction:column;gap:14px">
+
+    <!-- Actions -->
+    <div class="panel">
+      <div class="panel-body" style="display:flex;flex-direction:column;gap:8px">
+
+        {% if oc.customer_phone %}
+        <a href="https://wa.me/{{ oc.customer_phone|replace(' ','')|replace('+','') }}?text={{ ('تذكير موعد تغيير الزيت للسيارة ' + oc.car_plate)|urlencode }}"
+           target="_blank"
+           class="btn btn-success" style="width:100%;justify-content:center;background:#25d366;border-color:#1da851">
+          <svg viewBox="0 0 24 24" style="fill:currentColor;width:16px;height:16px">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/>
+          </svg>
+          إرسال تذكير واتساب
+        </a>
+        {% endif %}
+
+        <button class="btn btn-secondary" onclick="printOilCard()" style="width:100%;justify-content:center">
+          <svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          طباعة الكرت
+        </button>
+
+        <a href="{{ url_for('oil_change_new') }}?plate={{ oc.car_plate }}"
+           class="btn btn-primary" style="width:100%;justify-content:center">
+          <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          تغيير زيت جديد لنفس السيارة
+        </a>
+
+        <a href="{{ url_for('oil_change_edit', oid=oc.id) }}"
+           class="btn btn-secondary" style="width:100%;justify-content:center">
+          <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
+          تعديل هذا السجل
+        </a>
+
+        <a href="{{ url_for('oil_change_history', plate=oc.car_plate) }}"
+           class="btn btn-secondary" style="width:100%;justify-content:center">
+          <svg viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg>
+          كل سجلات {{ oc.car_plate }}
+        </a>
+
+        {% if current_user.is_admin %}
+        <hr class="divider">
+        <button class="btn btn-danger" style="width:100%;justify-content:center"
+                onclick="showModal('del-modal')">
+          <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+          حذف السجل
+        </button>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- History timeline -->
+    {% if history and history|length > 1 %}
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">سجل السيارة</span>
+        <span class="panel-count">{{ history|length }} سجل</span>
+      </div>
+      <div class="timeline">
+        {% for h in history %}
+        <div class="tl-item">
+          <div class="tl-dot {% if h.id == oc.id %}current{% else %}past{% endif %}"></div>
+          <div class="tl-body">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+              <div class="tl-date">
+                {% if h.id == oc.id %}
+                <span class="badge badge-signal no-dot" style="font-size:.6rem;margin-left:5px">الحالي</span>
+                {% endif %}
+                {{ h.change_date.strftime('%Y/%m/%d') }}
+              </div>
+              <span class="tl-km">{{ "{:,}".format(h.km_at_change) }} كم</span>
+            </div>
+            <div class="tl-meta">
+              {% if h.oil_type %}{{ h.oil_type }}{% endif %}
+              {% if h.oil_qty %} · {{ h.oil_qty }} لتر{% endif %}
+              {% if h.next_change_date %} · قادم: {{ h.next_change_date.strftime('%d/%m/%Y') }}{% endif %}
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% if history|length >= 5 %}
+      <div style="padding:10px 20px;border-top:1px solid var(--line-light);text-align:center">
+        <a href="{{ url_for('oil_change_history', plate=oc.car_plate) }}"
+           class="btn btn-secondary btn-sm">عرض كل السجلات</a>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+
+<!-- Delete modal -->
+{% if current_user.is_admin %}
+<div class="modal-overlay" id="del-modal" onclick="if(event.target===this)hideModal('del-modal')">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title">حذف سجل الزيت</h3>
+      <button class="modal-close" onclick="hideModal('del-modal')" type="button">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:.82rem;color:var(--muted);line-height:1.65">
+        هل أنت متأكد من حذف سجل تغيير الزيت للسيارة
+        <strong style="color:var(--ink)">{{ oc.car_plate }}</strong>
+        بتاريخ {{ oc.change_date.strftime('%Y/%m/%d') }} ؟
+      </p>
+    </div>
+    <div class="modal-footer">
+      <form method="POST" action="{{ url_for('oil_change_delete', oid=oc.id) }}">
+        <button class="btn btn-danger" type="submit">
+          <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+          تأكيد الحذف
+        </button>
+      </form>
+      <button class="btn btn-secondary" onclick="hideModal('del-modal')" type="button">إلغاء</button>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function printOilCard() {
+  openPrintModal('{{ url_for("print_oil_card", oid=oc.id) }}', 'كرت الزيت — {{ oc.car_plate }}');
+}
+</script>
+{% endblock %}

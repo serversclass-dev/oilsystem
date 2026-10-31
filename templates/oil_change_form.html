@@ -1,0 +1,914 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ 'تعديل سجل الزيت' if record else 'تغيير زيت جديد' }} — {{ settings_get('shop_name','RUN X') }}{% endblock %}
+
+{% block extra_head %}
+<style>
+.oc-form-layout {
+  display: grid;
+  grid-template-columns: minmax(0,1.5fr) minmax(0,.7fr);
+  gap: 18px;
+  align-items: start;
+}
+
+/* Last record card */
+.last-card {
+  background: var(--asphalt);
+  border-radius: var(--r4);
+  color: var(--white);
+  padding: 18px 18px 14px;
+  position: sticky;
+  top: 88px;
+}
+.last-card-title {
+  font-size: .62rem;
+  color: var(--steel);
+  font-family: var(--arabic);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.last-card-title svg {
+  width: 13px; height: 13px;
+  fill: none; stroke: var(--signal);
+  stroke-linecap: round; stroke-width: 2;
+}
+.lc-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: .72rem;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--line-dark);
+}
+.lc-row:last-child { border-bottom: none; }
+.lc-label { color: var(--steel); }
+.lc-value { font-weight: 600; color: var(--white); text-align: left; }
+
+/* Lookup bar */
+.lookup-wrap {
+  position: relative;
+}
+.lookup-results {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0; left: 0;
+  background: var(--white);
+  border: 1px solid var(--line-light);
+  border-radius: var(--r3);
+  box-shadow: 0 8px 28px rgba(23,25,27,.13);
+  z-index: 100;
+  padding: 12px 14px;
+}
+.lookup-results.show { display: block; }
+
+/* ── Product smart search ── */
+.prod-search-wrap { position: relative; }
+.prod-search-input {
+  width: 100%; height: 46px;
+  padding: 0 42px 0 14px;
+  background: var(--white);
+  border: 1.5px solid var(--line-light);
+  border-radius: var(--r2);
+  color: var(--ink);
+  font-family: var(--arabic); font-size: .9rem;
+  outline: none;
+  transition: border-color .13s, box-shadow .13s;
+}
+.prod-search-input:focus {
+  border-color: var(--signal);
+  box-shadow: 0 0 0 3px rgba(255,92,53,.1);
+}
+.prod-search-input::placeholder { color: var(--steel); }
+.prod-search-icon {
+  position: absolute; top: 50%; right: 13px;
+  transform: translateY(-50%);
+  pointer-events: none; color: var(--muted);
+}
+.prod-search-icon svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-width: 1.8; }
+
+.prod-dropdown {
+  display: none;
+  position: fixed;
+  background: var(--white);
+  border: 1px solid var(--line-light);
+  border-radius: var(--r3);
+  box-shadow: 0 12px 36px rgba(23,25,27,.18);
+  z-index: 9999;
+  max-height: 340px;
+  overflow-y: auto;
+  min-width: 320px;
+  animation: ddSlide .12s ease-out;
+}
+@keyframes ddSlide {
+  from { opacity:0; transform:translateY(-5px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+.prod-dropdown.open { display: block; }
+.prod-dropdown::-webkit-scrollbar { width: 4px; }
+.prod-dropdown::-webkit-scrollbar-thumb { background: var(--line-light); border-radius: 4px; }
+
+.pdd-header {
+  padding: 7px 14px 6px;
+  font-size: .58rem; font-weight: 700; color: var(--muted);
+  border-bottom: 1px solid var(--line-light);
+  background: rgba(242,240,234,.7);
+  letter-spacing: .07em;
+  position: sticky; top: 0; z-index: 1;
+  display: flex; justify-content: space-between;
+}
+.pdd-item {
+  display: flex; align-items: center;
+  padding: 10px 14px; gap: 10px;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(23,25,27,.06);
+  transition: background .09s;
+}
+.pdd-item:last-child { border-bottom: none; }
+.pdd-item:hover, .pdd-item.hl { background: rgba(255,92,53,.07); }
+.pdd-item:hover .pdd-name, .pdd-item.hl .pdd-name { color: var(--signal); }
+
+.pdd-icon {
+  width: 34px; height: 34px; border-radius: 7px; flex-shrink: 0;
+  background: rgba(255,92,53,.08);
+  border: 1px solid rgba(255,92,53,.14);
+  display: flex; align-items: center; justify-content: center;
+  font-size: .75rem; font-weight: 800; color: var(--signal);
+}
+.pdd-name { font-size: .8rem; font-weight: 600; color: var(--ink); transition: color .09s; }
+.pdd-name mark { background: rgba(255,92,53,.18); color: var(--signal); font-weight: 800; border-radius: 2px; padding: 0 1px; }
+.pdd-meta { font-size: .6rem; color: var(--muted); margin-top: 2px; display: flex; gap: 5px; }
+.pdd-right { margin-right: auto; text-align: left; flex-shrink: 0; }
+.pdd-stock { font-size: .7rem; font-weight: 700; color: var(--ink); font-family: var(--display); }
+.pdd-unit  { font-size: .58rem; color: var(--muted); margin-top: 2px; }
+.pdd-dot { width: 5px; height: 5px; border-radius: 50%; display: inline-block; background: var(--success); }
+.pdd-dot.low  { background: var(--warning); }
+.pdd-dot.zero { background: var(--danger); }
+.pdd-empty { padding: 24px 14px; text-align: center; font-size: .74rem; color: var(--muted); }
+
+/* Selected product display */
+.prod-selected {
+  display: none;
+  margin-top: 8px;
+  padding: 10px 13px;
+  background: rgba(255,92,53,.06);
+  border: 1.5px solid rgba(255,92,53,.2);
+  border-radius: var(--r2);
+  font-size: .78rem;
+  align-items: center; gap: 8px;
+}
+.prod-selected.show { display: flex; }
+.prod-selected-name { font-weight: 700; color: var(--ink); flex: 1; }
+.prod-clear {
+  background: none; border: none; cursor: pointer;
+  color: var(--muted); font-size: .7rem;
+  padding: 2px 6px; border-radius: var(--r1);
+  transition: color .1s;
+}
+.prod-clear:hover { color: var(--danger); }
+
+/* KM progress */
+.km-progress-wrap {
+  margin-top: 10px;
+  padding: 12px 14px;
+  background: rgba(68,120,255,.06);
+  border: 1px solid rgba(68,120,255,.15);
+  border-radius: var(--r3);
+  display: none;
+}
+.km-progress-wrap.show { display: block; }
+.km-bar {
+  height: 6px;
+  background: var(--line-light);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 8px;
+}
+.km-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--instrument);
+  transition: width .4s ease;
+}
+
+@media (max-width: 880px) {
+  .oc-form-layout { grid-template-columns: 1fr; }
+  .last-card { position: static; }
+}
+</style>
+{% endblock %}
+
+{% block topbar_pre %}تغيير الزيت{% endblock %}
+{% block topbar_title %}{{ 'تعديل السجل' if record else 'تغيير زيت جديد' }}{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('oil_change_list') }}" class="btn btn-secondary">
+  <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+  السجلات
+</a>
+{% endblock %}
+
+{% block content %}
+
+<form method="POST"
+      action="{{ url_for('oil_change_edit', oid=record.id) if record else url_for('oil_change_new') }}"
+      id="oc-form" novalidate>
+
+  <div class="oc-form-layout">
+
+    <!-- ── LEFT ── -->
+    <div style="display:flex;flex-direction:column;gap:16px">
+
+      <!-- Plate lookup (new only) -->
+      {% if not record %}
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">بحث سريع بلوحة السيارة</span>
+        </div>
+        <div class="panel-body">
+          <div class="lookup-wrap">
+            <div class="input-group">
+              <input class="form-control" type="text" id="plate-lookup"
+                     placeholder="أدخل رقم اللوحة للبحث عن آخر تغيير…"
+                     style="text-transform:uppercase"
+                     oninput="this.value=this.value.toUpperCase()"
+                     autocomplete="off"/>
+              <button class="btn btn-dark" type="button" onclick="doLookup()">
+                <svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg>
+                بحث
+              </button>
+            </div>
+            <div class="lookup-results" id="lookup-results"></div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Customer & car info -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">معلومات الزبون والسيارة</span>
+        </div>
+        <div class="panel-body" style="display:flex;flex-direction:column;gap:14px">
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="customer_name">اسم الزبون</label>
+              <input class="form-control" type="text" id="customer_name" name="customer_name"
+                     value="{{ record.customer_name if record else (last.customer_name if last else '') }}"
+                     placeholder="اسم الزبون"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="customer_phone">رقم الهاتف</label>
+              <input class="form-control" type="tel" id="customer_phone" name="customer_phone"
+                     value="{{ record.customer_phone if record else (last.customer_phone if last else '') }}"
+                     placeholder="0912345678"/>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="car_plate">رقم اللوحة <span style="color:var(--signal)">*</span></label>
+              <input class="form-control" type="text" id="car_plate" name="car_plate"
+                     value="{{ record.car_plate if record else (last.car_plate if last else plate) }}"
+                     placeholder="مثال: 123 ABC"
+                     style="text-transform:uppercase"
+                     oninput="this.value=this.value.toUpperCase()"
+                     required/>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="car_model">موديل السيارة</label>
+              <input class="form-control" type="text" id="car_model" name="car_model"
+                     value="{{ record.car_model if record else (last.car_model if last else '') }}"
+                     placeholder="مثال: تويوتا كامري 2020"/>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Oil details -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">تفاصيل الزيت</span>
+        </div>
+        <div class="panel-body" style="display:flex;flex-direction:column;gap:14px">
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">منتج الزيت من المخزون</label>
+              <!-- Hidden real input -->
+              <input type="hidden" id="product_id" name="product_id"
+                     value="{{ record.product_id if record else (last.product_id if last else '') }}"/>
+              <div class="prod-search-wrap">
+                <input class="prod-search-input"
+                       type="search"
+                       id="prod-search-oc"
+                       placeholder="ابحث عن منتج الزيت…"
+                       autocomplete="off"
+                       oninput="ocSearchInput(this.value)"
+                       onkeydown="ocSearchKey(event)"
+                       onfocus="ocOpenDD()"
+                       onblur="ocScheduleClose()"/>
+                <div class="prod-search-icon">
+                  <svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg>
+                </div>
+                <div class="prod-dropdown" id="oc-prod-dropdown"></div>
+              </div>
+              <div class="prod-selected" id="prod-selected-display">
+                <span class="prod-selected-name" id="prod-selected-name"></span>
+                <button type="button" class="prod-clear" onclick="ocClearProduct()">✕ مسح</button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="oil_type">نوع الزيت (نص)</label>
+              <input class="form-control" type="text" id="oil_type" name="oil_type"
+                     value="{{ record.oil_type if record else (last.oil_type if last else '') }}"
+                     placeholder="مثال: 5W-40 Full Synthetic"/>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="oil_qty">كمية الزيت (لتر)</label>
+              <div class="input-group">
+                <input class="form-control" type="number" id="oil_qty" name="oil_qty"
+                       min="0" step="0.5"
+                       value="{{ record.oil_qty if record else (last.oil_qty if last else 4) }}"
+                       placeholder="4"/>
+                <span class="input-addon">لتر</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="service_fee">أجرة الخدمة ({{ currency }})</label>
+              <div class="input-group">
+                <input class="form-control" type="number" id="service_fee" name="service_fee"
+                       min="0" step="0.5"
+                       value="{{ record.service_fee if record else 0 }}"
+                       placeholder="0"/>
+                <span class="input-addon">{{ currency }}</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- KM & dates -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">الكيلومترات والمواعيد</span>
+        </div>
+        <div class="panel-body" style="display:flex;flex-direction:column;gap:14px">
+
+          <div class="form-row-3">
+            <div class="form-group">
+              <label class="form-label" for="km_at_change">الكم عند التغيير</label>
+              <div class="input-group">
+                <input class="form-control" type="number" id="km_at_change" name="km_at_change"
+                       min="0" step="1"
+                       value="{{ record.km_at_change if record else (last.next_change_km if last else 0) }}"
+                       oninput="calcNextKm()"/>
+                <span class="input-addon">كم</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="km_interval">فترة التغيير</label>
+              <div class="input-group">
+                <input class="form-control" type="number" id="km_interval" name="km_interval"
+                       min="1000" step="500"
+                       value="{{ record.km_interval if record else (last.km_interval if last else settings_get('default_km_interval','5000')) }}"
+                       oninput="calcNextKm()"/>
+                <span class="input-addon">كم</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">الكم القادم</label>
+              <div class="form-control" id="next_km_display"
+                   style="background:rgba(242,240,234,.8);color:var(--muted);font-family:var(--display);font-weight:700;display:flex;align-items:center">
+                —
+              </div>
+            </div>
+          </div>
+
+          <!-- KM progress bar -->
+          <div class="km-progress-wrap" id="km-progress">
+            <div style="display:flex;justify-content:space-between;font-size:.65rem;color:var(--muted)">
+              <span>آخر تغيير: <span id="km-last-val">—</span> كم</span>
+              <span>القادم: <span id="km-next-val">—</span> كم</span>
+            </div>
+            <div class="km-bar">
+              <div class="km-fill" id="km-fill" style="width:0%"></div>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="change_date">تاريخ التغيير <span style="color:var(--signal)">*</span></label>
+              <input class="form-control" type="date" id="change_date" name="change_date"
+                     value="{{ record.change_date.strftime('%Y-%m-%d') if record else today.strftime('%Y-%m-%d') }}"
+                     required/>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="next_change_date">موعد التغيير القادم</label>
+              <input class="form-control" type="date" id="next_change_date" name="next_change_date"
+                     value="{{ record.next_change_date.strftime('%Y-%m-%d') if record and record.next_change_date else '' }}"
+                     oninput="clearAutoDate()"/>
+              <small style="font-size:.6rem;color:var(--muted);margin-top:3px;display:block">
+                اتركه فارغاً للحساب التلقائي (3 أشهر من تاريخ التغيير)
+              </small>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="notes">ملاحظات</label>
+            <textarea class="form-control" id="notes" name="notes"
+                      rows="3" placeholder="أي ملاحظات إضافية…">{{ record.notes if record else '' }}</textarea>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Invoice option (new only) -->
+      {% if not record %}
+      <div class="panel" style="border-color:rgba(68,120,255,.25)">
+        <div class="panel-header" style="background:rgba(68,120,255,.04)">
+          <span class="panel-title" style="color:var(--instrument)">إنشاء فاتورة</span>
+        </div>
+        <div class="panel-body">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+            <input type="checkbox" name="create_sale" value="1" id="create_sale"
+                   style="accent-color:var(--signal);width:16px;height:16px"
+                   onchange="toggleDiscountRow(this.checked)"/>
+            <div>
+              <div class="text-sm fw-6">إنشاء فاتورة بيع تلقائياً</div>
+              <div class="text-xs text-muted mt-4">سيتم خصم الزيت من المخزون وإنشاء فاتورة</div>
+            </div>
+          </label>
+          <div id="discount-row" style="display:none;margin-top:14px">
+            <div class="form-group">
+              <label class="form-label" for="discount">خصم على الفاتورة ({{ currency }})</label>
+              <input class="form-control" type="number" name="discount" id="discount"
+                     min="0" step="0.01" value="0"/>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+    </div><!-- /left -->
+
+    <!-- ── RIGHT ── -->
+    <div style="display:flex;flex-direction:column;gap:14px">
+
+      <!-- Last record card -->
+      {% if last and not record %}
+      <div class="last-card">
+        <div class="last-card-title">
+          <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          آخر تغيير زيت — {{ last.car_plate }}
+        </div>
+        <div class="lc-row">
+          <span class="lc-label">التاريخ</span>
+          <span class="lc-value">{{ last.change_date.strftime('%Y/%m/%d') }}</span>
+        </div>
+        <div class="lc-row">
+          <span class="lc-label">نوع الزيت</span>
+          <span class="lc-value">{{ last.oil_type or '—' }}</span>
+        </div>
+        <div class="lc-row">
+          <span class="lc-label">الكمية</span>
+          <span class="lc-value">{{ last.oil_qty }} لتر</span>
+        </div>
+        <div class="lc-row">
+          <span class="lc-label">الكم عند التغيير</span>
+          <span class="lc-value">{{ "{:,}".format(last.km_at_change) }} كم</span>
+        </div>
+        <div class="lc-row">
+          <span class="lc-label">الموعد القادم</span>
+          <span class="lc-value" style="color:var(--signal)">
+            {% if last.next_change_date %}
+            {{ last.next_change_date.strftime('%Y/%m/%d') }}
+            {% else %}—{% endif %}
+          </span>
+        </div>
+        {% if last.car_model %}
+        <div class="lc-row">
+          <span class="lc-label">الموديل</span>
+          <span class="lc-value">{{ last.car_model }}</span>
+        </div>
+        {% endif %}
+        <div style="margin-top:12px">
+          <button type="button" class="btn btn-secondary btn-sm"
+                  style="width:100%;justify-content:center;background:rgba(255,255,255,.08);border-color:var(--line-dark);color:var(--white)"
+                  onclick="fillFromLast()">
+            <svg viewBox="0 0 24 24"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="4" y1="4" x2="21" y2="21"/></svg>
+            تعبئة من السجل السابق
+          </button>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Actions -->
+      <div class="panel">
+        <div class="panel-body" style="display:flex;flex-direction:column;gap:8px">
+          <button class="btn btn-primary btn-lg" type="submit"
+                  style="width:100%;justify-content:center">
+            <svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v14a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
+            {{ 'حفظ التعديلات' if record else 'تسجيل تغيير الزيت' }}
+          </button>
+          <a href="{{ url_for('oil_change_list') }}"
+             class="btn btn-secondary" style="width:100%;justify-content:center">
+            إلغاء
+          </a>
+          {% if record and current_user.is_admin %}
+          <hr class="divider">
+          <button type="button" class="btn btn-danger"
+                  style="width:100%;justify-content:center"
+                  onclick="showModal('del-modal')">
+            <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+            حذف السجل
+          </button>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Record info (edit) -->
+      {% if record %}
+      <div class="panel">
+        <div class="panel-header"><span class="panel-title">معلومات</span></div>
+        <div style="padding:4px 18px 10px">
+          <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line-light);font-size:.76rem">
+            <span class="text-muted">رقم اللوحة</span>
+            <span class="fw-6">
+              <a href="{{ url_for('oil_change_history', plate=record.car_plate) }}"
+                 class="badge badge-instrument no-dot">{{ record.car_plate }}</a>
+            </span>
+          </div>
+          {% if record.sale %}
+          <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line-light);font-size:.76rem">
+            <span class="text-muted">الفاتورة</span>
+            <a href="{{ url_for('sales_detail', sid=record.sale_id) }}"
+               class="fw-6 text-signal">{{ record.sale.invoice_no }}</a>
+          </div>
+          {% endif %}
+          <div style="display:flex;justify-content:space-between;padding:9px 0;font-size:.76rem">
+            <span class="text-muted">تاريخ الإضافة</span>
+            <span class="fw-6">{{ record.created_at.strftime('%Y/%m/%d') }}</span>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+    </div><!-- /right -->
+
+  </div><!-- /layout -->
+
+</form>
+
+<!-- Delete modal -->
+{% if record and current_user.is_admin %}
+<div class="modal-overlay" id="del-modal" onclick="if(event.target===this)hideModal('del-modal')">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title">حذف سجل الزيت</h3>
+      <button class="modal-close" onclick="hideModal('del-modal')" type="button">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:.82rem;color:var(--muted);line-height:1.65">
+        هل أنت متأكد من حذف سجل تغيير الزيت للسيارة
+        <strong style="color:var(--ink)">{{ record.car_plate }}</strong> ؟
+      </p>
+    </div>
+    <div class="modal-footer">
+      <form method="POST" action="{{ url_for('oil_change_delete', oid=record.id) }}">
+        <button class="btn btn-danger" type="submit">
+          <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+          حذف
+        </button>
+      </form>
+      <button class="btn btn-secondary" onclick="hideModal('del-modal')" type="button">إلغاء</button>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+var lastData = {% if last and not record %}{
+  customer_name:  "{{ last.customer_name|replace('"','\\"') }}",
+  customer_phone: "{{ last.customer_phone|replace('"','\\"') }}",
+  car_plate:      "{{ last.car_plate }}",
+  car_model:      "{{ last.car_model|replace('"','\\"') }}",
+  oil_type:       "{{ last.oil_type|replace('"','\\"') }}",
+  oil_qty:        {{ last.oil_qty }},
+  product_id:     {{ last.product_id or 'null' }},
+  km_interval:    {{ last.km_interval }},
+  last_km:        {{ last.km_at_change }}
+}{% else %}null{% endif %};
+
+function fillFromLast() {
+  if (!lastData) return;
+  setVal('customer_name',  lastData.customer_name);
+  setVal('customer_phone', lastData.customer_phone);
+  setVal('car_plate',      lastData.car_plate);
+  setVal('car_model',      lastData.car_model);
+  setVal('oil_type',       lastData.oil_type);
+  setVal('oil_qty',        lastData.oil_qty);
+  setVal('km_interval',    lastData.km_interval);
+  if (lastData.product_id) {
+    var sel = document.getElementById('product_id');
+    if (sel) sel.value = lastData.product_id;
+  }
+  calcNextKm();
+}
+
+function setVal(id, val) {
+  var el = document.getElementById(id);
+  if (el && val !== null && val !== undefined) el.value = val;
+}
+
+// ── Product smart search ────────────────────────────
+var OC_PRODUCTS = [
+  {% for p in oil_products %}
+  { id: {{ p.id }}, name: {{ p.name|tojson }}, quantity: {{ p.quantity }}, unit: {{ p.unit|tojson }}, alert_threshold: {{ p.alert_threshold }} }{% if not loop.last %},{% endif %}
+  {% endfor %}
+];
+
+var ocHlIndex = -1;
+var ocCloseTimer = null;
+
+function ocNorm(s) {
+  return (s||'').toLowerCase()
+    .replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').trim();
+}
+function ocScore(p, q) {
+  if (!q) return 1;
+  var nq = ocNorm(q), nm = ocNorm(p.name);
+  if (nm === nq) return 400;
+  if (nm.indexOf(nq) === 0) return 300;
+  if (nm.indexOf(nq) !== -1) return 200;
+  var score = 0;
+  ocNorm(q).split(' ').forEach(function(w){
+    if (!w) return;
+    ocNorm(p.name).split(' ').forEach(function(n){
+      if (n.indexOf(w) === 0) score += 60;
+      else if (n.indexOf(w) !== -1) score += 30;
+    });
+  });
+  return score;
+}
+function ocHighlight(text, q) {
+  if (!q) return escH(text);
+  var nt = ocNorm(text), nq = ocNorm(q);
+  var i = nt.indexOf(nq);
+  if (i === -1) return escH(text);
+  return escH(text.slice(0,i)) + '<mark>' + escH(text.slice(i, i+q.length)) + '</mark>' + escH(text.slice(i+q.length));
+}
+function escH(s){ return (s||'').replace(/&/g,'&').replace(/</g,'<').replace(/>/g,'>'); }
+
+function ocFiltered(q) {
+  var res = OC_PRODUCTS.filter(function(p){
+    return !q || ocScore(p,q) > 0;
+  });
+  if (q) res.sort(function(a,b){ return ocScore(b,q) - ocScore(a,q); });
+  return res;
+}
+
+function ocRenderDD(q) {
+  var dd = document.getElementById('oc-prod-dropdown');
+  var list = ocFiltered(q);
+  ocHlIndex = -1;
+  if (!list.length) {
+    dd.innerHTML = '<div class="pdd-empty">لا توجد منتجات مطابقة</div>';
+    return;
+  }
+  var html = '<div class="pdd-header"><span>' + list.length + ' منتج</span><span style="font-weight:400;font-size:.56rem">↑↓ Enter</span></div>';
+  list.slice(0,50).forEach(function(p, i){
+    var qty = parseFloat(p.quantity);
+    var dotCls = qty <= 0 ? 'zero' : (qty <= p.alert_threshold ? 'low' : '');
+    var qtyStr = qty % 1 === 0 ? qty.toFixed(0) : qty.toFixed(1);
+    html += '<div class="pdd-item" data-pid="' + p.id + '" data-idx="' + i + '"' +
+      ' onmousedown="event.preventDefault();ocSelectProduct(' + p.id + ')">' +
+      '<div class="pdd-icon">' + escH(p.name.trim().charAt(0)) + '</div>' +
+      '<div style="flex:1;min-width:0">' +
+        '<div class="pdd-name">' + ocHighlight(p.name, q) + '</div>' +
+        '<div class="pdd-meta"><span class="pdd-dot ' + dotCls + '"></span><span>' + escH(p.unit) + '</span></div>' +
+      '</div>' +
+      '<div class="pdd-right">' +
+        '<div class="pdd-stock">' + qtyStr + '</div>' +
+        '<div class="pdd-unit">' + escH(p.unit) + ' متاح</div>' +
+      '</div>' +
+    '</div>';
+  });
+  dd.innerHTML = html;
+}
+
+function ocPositionDD() {
+  var inp  = document.getElementById('prod-search-oc');
+  var dd   = document.getElementById('oc-prod-dropdown');
+  if (!inp || !dd) return;
+  var rect = inp.getBoundingClientRect();
+  dd.style.top   = (rect.bottom + 4) + 'px';
+  dd.style.left  = rect.left + 'px';
+  dd.style.width = rect.width + 'px';
+}
+
+function ocOpenDD() {
+  ocCancelClose();
+  ocRenderDD(document.getElementById('prod-search-oc').value);
+  ocPositionDD();
+  document.getElementById('oc-prod-dropdown').classList.add('open');
+}
+function ocCloseDD() {
+  document.getElementById('oc-prod-dropdown').classList.remove('open');
+  ocHlIndex = -1;
+}
+function ocScheduleClose() { ocCloseTimer = setTimeout(ocCloseDD, 200); }
+function ocCancelClose()   { if (ocCloseTimer){ clearTimeout(ocCloseTimer); ocCloseTimer = null; } }
+
+function ocSearchInput(val) {
+  ocRenderDD(val);
+  ocPositionDD();
+  document.getElementById('oc-prod-dropdown').classList.add('open');
+}
+
+function ocSearchKey(e) {
+  var dd = document.getElementById('oc-prod-dropdown');
+  var items = dd.querySelectorAll('.pdd-item');
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    ocHlIndex = Math.min(ocHlIndex + 1, items.length - 1);
+    ocHL(items);
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    ocHlIndex = Math.max(ocHlIndex - 1, 0);
+    ocHL(items);
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    ocCancelClose();
+    if (ocHlIndex >= 0 && items[ocHlIndex]) {
+      ocSelectProduct(parseInt(items[ocHlIndex].dataset.pid));
+    } else {
+      var list = ocFiltered(document.getElementById('prod-search-oc').value.trim());
+      if (list.length > 0) ocSelectProduct(list[0].id);
+    }
+  } else if (e.key === 'Escape') {
+    ocCloseDD();
+  }
+}
+
+function ocHL(items) {
+  items.forEach(function(el){ el.classList.remove('hl'); });
+  if (ocHlIndex >= 0 && items[ocHlIndex]) {
+    items[ocHlIndex].classList.add('hl');
+    items[ocHlIndex].scrollIntoView({ block: 'nearest' });
+  }
+}
+
+function ocSelectProduct(pid) {
+  var p = OC_PRODUCTS.find(function(x){ return x.id === pid; });
+  if (!p) return;
+  document.getElementById('product_id').value = pid;
+  document.getElementById('prod-search-oc').value = '';
+  ocCloseDD();
+  // Show selected badge
+  var disp = document.getElementById('prod-selected-display');
+  var name = document.getElementById('prod-selected-name');
+  disp.classList.add('show');
+  name.textContent = p.name + ' (' + p.quantity + ' ' + p.unit + ')';
+  // Auto-fill oil type if empty
+  var oilTypeEl = document.getElementById('oil_type');
+  if (oilTypeEl && !oilTypeEl.value) oilTypeEl.value = p.name;
+}
+
+function ocClearProduct() {
+  document.getElementById('product_id').value = '';
+  document.getElementById('prod-selected-display').classList.remove('show');
+  document.getElementById('prod-search-oc').value = '';
+  document.getElementById('prod-search-oc').focus();
+}
+
+// Init: if editing and product pre-selected, show it
+(function(){
+  var pid = document.getElementById('product_id').value;
+  if (pid) {
+    var p = OC_PRODUCTS.find(function(x){ return x.id == pid; });
+    if (p) {
+      var disp = document.getElementById('prod-selected-display');
+      var name = document.getElementById('prod-selected-name');
+      disp.classList.add('show');
+      name.textContent = p.name + ' (' + p.quantity + ' ' + p.unit + ')';
+    }
+  }
+  ocRenderDD('');
+  // Reposition on scroll/resize
+  window.addEventListener('scroll', ocPositionDD, true);
+  window.addEventListener('resize', ocPositionDD);
+})();
+
+function onProductChange(sel) {
+  var opt = sel.options[sel.selectedIndex];
+  if (opt && opt.dataset.name) {
+    var oilTypeEl = document.getElementById('oil_type');
+    if (oilTypeEl && !oilTypeEl.value) oilTypeEl.value = opt.dataset.name;
+  }
+}
+
+function calcNextKm() {
+  var km  = parseInt(document.getElementById('km_at_change').value)  || 0;
+  var int = parseInt(document.getElementById('km_interval').value)    || 5000;
+  var next = km + int;
+  var disp = document.getElementById('next_km_display');
+  if (disp) disp.textContent = next.toLocaleString() + ' كم';
+
+  // KM progress (if we have last data)
+  if (lastData && lastData.last_km > 0) {
+    var prog = document.getElementById('km-progress');
+    if (prog) {
+      prog.classList.add('show');
+      var pct = Math.min(Math.max(((km - lastData.last_km) / int) * 100, 0), 100);
+      document.getElementById('km-fill').style.width = pct + '%';
+      document.getElementById('km-last-val').textContent = lastData.last_km.toLocaleString();
+      document.getElementById('km-next-val').textContent = (lastData.last_km + int).toLocaleString();
+    }
+  }
+
+  // Auto-set next date if empty
+  var nextDateEl = document.getElementById('next_change_date');
+  if (nextDateEl && !nextDateEl.dataset.manual) {
+    var base = document.getElementById('change_date').value;
+    if (base) {
+      var d = new Date(base);
+      d.setMonth(d.getMonth() + 3);
+      nextDateEl.value = d.toISOString().slice(0,10);
+    }
+  }
+}
+
+function clearAutoDate() {
+  var el = document.getElementById('next_change_date');
+  if (el) el.dataset.manual = '1';
+}
+
+// Plate lookup
+function doLookup() {
+  var q = document.getElementById('plate-lookup').value.trim();
+  if (!q) return;
+  fetch('/api/oil-change/lookup?q=' + encodeURIComponent(q))
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      var div = document.getElementById('lookup-results');
+      if (!data) {
+        div.innerHTML = '<div style="font-size:.76rem;color:var(--muted)">لم يتم العثور على سجل سابق للوحة <strong>' + q + '</strong></div>';
+        div.classList.add('show');
+        setTimeout(function(){ div.classList.remove('show'); }, 3000);
+        return;
+      }
+      div.innerHTML =
+        '<div style="font-size:.72rem;color:var(--muted);margin-bottom:10px">تم العثور على سجل سابق:</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:.75rem">' +
+        '<div><span style="color:var(--muted)">اللوحة: </span><strong>' + data.car_plate + '</strong></div>' +
+        '<div><span style="color:var(--muted)">الزبون: </span><strong>' + data.customer_name + '</strong></div>' +
+        '<div><span style="color:var(--muted)">الزيت: </span><strong>' + (data.oil_type || '—') + '</strong></div>' +
+        '<div><span style="color:var(--muted)">آخر كم: </span><strong>' + (data.last_km || 0).toLocaleString() + '</strong></div>' +
+        '</div>' +
+        '<button type="button" class="btn btn-primary btn-sm" style="margin-top:12px;width:100%;justify-content:center" onclick="fillFromAPI(' + JSON.stringify(data).replace(/"/g,"'") + ')">تعبئة البيانات</button>';
+      div.classList.add('show');
+    });
+}
+
+function fillFromAPI(data) {
+  setVal('customer_name',  data.customer_name);
+  setVal('customer_phone', data.customer_phone);
+  setVal('car_plate',      data.car_plate);
+  setVal('car_model',      data.car_model  || '');
+  setVal('oil_type',       data.oil_type   || '');
+  setVal('oil_qty',        data.oil_qty    || 4);
+  setVal('km_interval',    data.km_interval || 5000);
+  if (data.product_id) {
+    var sel = document.getElementById('product_id');
+    if (sel) sel.value = data.product_id;
+  }
+  document.getElementById('lookup-results').classList.remove('show');
+  calcNextKm();
+}
+
+document.getElementById('plate-lookup') && document.getElementById('plate-lookup').addEventListener('keydown', function(e){
+  if (e.key === 'Enter') { e.preventDefault(); doLookup(); }
+});
+
+function toggleDiscountRow(show) {
+  var row = document.getElementById('discount-row');
+  if (row) row.style.display = show ? 'block' : 'none';
+}
+
+// Init
+calcNextKm();
+</script>
+{% endblock %}

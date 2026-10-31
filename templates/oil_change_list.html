@@ -1,0 +1,494 @@
+{% extends 'base.html' %}
+
+{% block title %}سجل تغيير الزيت — {{ settings_get('shop_name','RUN X') }}{% endblock %}
+
+{% block extra_head %}
+<style>
+.oc-layout {
+  display: grid;
+  grid-template-columns: minmax(0,1.6fr) minmax(0,.65fr);
+  gap: 18px;
+  align-items: start;
+}
+
+/* Alert panels */
+.panel-overdue  { border-color: rgba(199,61,61,.3); }
+.panel-overdue .panel-header { background: rgba(199,61,61,.05); }
+.panel-upcoming { border-color: rgba(181,106,0,.28); }
+.panel-upcoming .panel-header { background: rgba(181,106,0,.04); }
+
+/* Filter tabs */
+.filter-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--line-light);
+  padding: 0 20px;
+  overflow-x: auto;
+}
+.ftab {
+  padding: 11px 16px;
+  font-size: .74rem;
+  font-weight: 600;
+  color: var(--muted);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: color .12s, border-color .12s;
+  margin-bottom: -1px;
+}
+.ftab:hover { color: var(--ink); }
+.ftab.active { color: var(--signal); border-bottom-color: var(--signal); }
+
+/* Alert quick rows */
+.alert-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--line-light);
+  gap: 10px;
+}
+.alert-row:last-child { border-bottom: none; }
+.ar-name { font-size: .76rem; font-weight: 600; color: var(--ink); }
+.ar-plate { font-size: .62rem; color: var(--muted); margin-top: 2px; }
+
+/* WhatsApp */
+.wa-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: var(--r2);
+  background: #25d366;
+  color: #fff;
+  font-size: .62rem;
+  font-weight: 700;
+  text-decoration: none;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.wa-btn svg { width: 13px; height: 13px; fill: currentColor; }
+
+/* Next change indicator */
+.next-date-cell { text-align: center; }
+.next-date-val  { font-size: .72rem; font-weight: 600; color: var(--ink); }
+.next-date-days { font-size: .58rem; margin-top: 2px; }
+
+@media (max-width: 1000px) {
+  .oc-layout { grid-template-columns: 1fr; }
+}
+</style>
+{% endblock %}
+
+{% block topbar_pre %}
+{% if history_mode is defined and history_mode %}سجل السيارة{% else %}تغيير الزيت{% endif %}
+{% endblock %}
+
+{% block topbar_title %}
+{% if history_mode is defined and history_mode %}
+  سجل السيارة: {{ plate }}
+{% else %}
+  سجل تغيير الزيت
+{% endif %}
+{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('oil_change_new') }}" class="btn btn-primary">
+  <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+  تغيير زيت جديد
+</a>
+{% if history_mode is defined and history_mode %}
+<a href="{{ url_for('oil_change_list') }}" class="btn btn-secondary">
+  <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+  كل السجلات
+</a>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+
+{% if history_mode is defined and history_mode %}
+<!-- ── History mode: single plate ── -->
+<div class="panel">
+  <div class="panel-header">
+    <span class="panel-title">سجل السيارة</span>
+    <span class="badge badge-instrument no-dot" style="font-size:.75rem;margin-right:6px">{{ plate }}</span>
+    <span class="panel-count">{{ records.total }} سجل</span>
+  </div>
+
+  {% if records.items %}
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>الزبون</th>
+          <th>موديل السيارة</th>
+          <th>نوع الزيت</th>
+          <th style="text-align:center">الكمية</th>
+          <th style="text-align:center">الكم عند التغيير</th>
+          <th>تاريخ التغيير</th>
+          <th>الموعد القادم</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for oc in records.items %}
+        <tr>
+          <td class="td-strong">{{ oc.customer_name }}</td>
+          <td class="td-muted text-sm">{{ oc.car_model or '—' }}</td>
+          <td class="text-sm">{{ oc.oil_type or '—' }}</td>
+          <td style="text-align:center">
+            <span class="td-num" style="font-size:.85rem">{{ oc.oil_qty }}</span>
+            <span class="text-xs text-muted"> لتر</span>
+          </td>
+          <td class="td-muted text-sm" style="text-align:center">
+            {{ "{:,}".format(oc.km_at_change) }} كم
+          </td>
+          <td class="td-muted text-xs">{{ oc.change_date.strftime('%Y/%m/%d') }}</td>
+          <td>
+            {% if oc.next_change_date %}
+            {% set days_left = (oc.next_change_date - today).days %}
+            <div class="next-date-cell">
+              <div class="next-date-val">{{ oc.next_change_date.strftime('%Y/%m/%d') }}</div>
+              <div class="next-date-days">
+                {% if days_left < 0 %}
+                <span class="badge badge-danger no-dot">متأخر {{ days_left|abs }} يوم</span>
+                {% elif days_left == 0 %}
+                <span class="badge badge-danger no-dot">اليوم</span>
+                {% elif days_left <= 7 %}
+                <span class="badge badge-warning no-dot">{{ days_left }} يوم</span>
+                {% else %}
+                <span class="text-muted">{{ days_left }} يوم</span>
+                {% endif %}
+              </div>
+            </div>
+            {% else %}—{% endif %}
+          </td>
+          <td>
+            <a href="{{ url_for('oil_change_detail', oid=oc.id) }}"
+               class="btn btn-secondary btn-icon-sm">
+              <svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:none;stroke:currentColor;stroke-linecap:round;stroke-width:2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if records.pages > 1 %}
+  <div class="pagination">
+    <a href="{{ url_for('oil_change_history', plate=plate, page=records.prev_num) }}"
+       class="page-link {% if not records.has_prev %}disabled{% endif %}">
+      <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-linecap:round;stroke-width:2"><polyline points="9 18 15 12 9 6"/></svg>
+    </a>
+    {% for p in records.iter_pages(left_edge=1,right_edge=1,left_current=2,right_current=2) %}
+      {% if p %}
+      <a href="{{ url_for('oil_change_history', plate=plate, page=p) }}"
+         class="page-link {% if p==records.page %}active{% endif %}">{{ p }}</a>
+      {% else %}
+      <span class="page-link disabled">…</span>
+      {% endif %}
+    {% endfor %}
+    <a href="{{ url_for('oil_change_history', plate=plate, page=records.next_num) }}"
+       class="page-link {% if not records.has_next %}disabled{% endif %}">
+      <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-linecap:round;stroke-width:2"><polyline points="15 18 9 12 15 6"/></svg>
+    </a>
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div class="panel-body">
+    <div class="empty-state">
+      <svg viewBox="0 0 24 24"><path d="M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v3"/><rect x="9" y="11" width="14" height="10" rx="2"/></svg>
+      <div class="empty-state-title">لا توجد سجلات لهذه السيارة</div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+{% else %}
+<!-- ── Normal list mode ── -->
+
+<div class="oc-layout">
+
+  <!-- LEFT: main table -->
+  <div>
+    <div class="panel">
+
+      <!-- Filters -->
+      <form method="GET" action="{{ url_for('oil_change_list') }}">
+        <input type="hidden" name="filter" value="{{ filter_ }}">
+        <div class="filter-bar" style="flex-wrap:wrap;gap:10px">
+          <div class="search-bar" style="max-width:260px">
+            <svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg>
+            <input class="form-control" type="search" name="q" value="{{ search }}"
+                   placeholder="اسم الزبون، رقم اللوحة، الهاتف…"/>
+          </div>
+          <input class="form-control" type="date" name="date_from" value="{{ date_from }}" style="width:155px"/>
+          <input class="form-control" type="date" name="date_to"   value="{{ date_to }}"   style="width:155px"/>
+          <button class="btn btn-dark btn-sm" type="submit">بحث</button>
+          {% if search or date_from or date_to %}
+          <a href="{{ url_for('oil_change_list', filter=filter_) }}" class="btn btn-secondary btn-sm">مسح</a>
+          {% endif %}
+          <span class="text-xs text-muted" style="margin-right:auto">{{ records.total }} سجل</span>
+        </div>
+      </form>
+
+      <!-- Tabs -->
+      <div class="filter-tabs">
+        <a href="{{ url_for('oil_change_list', q=search) }}"
+           class="ftab {% if filter_=='all' %}active{% endif %}">الكل</a>
+        <a href="{{ url_for('oil_change_list', q=search, filter='upcoming') }}"
+           class="ftab {% if filter_=='upcoming' %}active{% endif %}">
+          قريباً
+          {% if upcoming|length > 0 %}
+          <span class="badge badge-warning no-dot" style="margin-right:5px">{{ upcoming|length }}</span>
+          {% endif %}
+        </a>
+        <a href="{{ url_for('oil_change_list', q=search, filter='overdue') }}"
+           class="ftab {% if filter_=='overdue' %}active{% endif %}">
+          متأخرون
+          {% if overdue|length > 0 %}
+          <span class="badge badge-danger no-dot" style="margin-right:5px">{{ overdue|length }}</span>
+          {% endif %}
+        </a>
+      </div>
+
+      <!-- Table -->
+      {% if records.items %}
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>الزبون</th>
+              <th>اللوحة</th>
+              <th>نوع الزيت</th>
+              <th style="text-align:center">الكم</th>
+              <th>تاريخ التغيير</th>
+              <th>الموعد القادم</th>
+              <th>أجرة الخدمة</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for oc in records.items %}
+            {% if oc.next_change_date %}
+              {% set days_left = (oc.next_change_date - today).days %}
+            {% else %}
+              {% set days_left = 999 %}
+            {% endif %}
+            <tr>
+              <td>
+                <div class="td-strong">{{ oc.customer_name }}</div>
+                {% if oc.customer_phone %}
+                <div class="text-xs text-muted">{{ oc.customer_phone }}</div>
+                {% endif %}
+              </td>
+              <td>
+                <a href="{{ url_for('oil_change_history', plate=oc.car_plate) }}"
+                   class="badge badge-instrument no-dot"
+                   style="text-decoration:none;font-size:.68rem">
+                  {{ oc.car_plate }}
+                </a>
+                {% if oc.car_model %}
+                <div class="text-xs text-muted mt-4">{{ oc.car_model }}</div>
+                {% endif %}
+              </td>
+              <td class="text-sm">{{ oc.oil_type or '—' }}</td>
+              <td class="td-muted text-sm" style="text-align:center">
+                {{ oc.km_at_change|default(0) | string | replace(',','') }} كم
+              </td>
+              <td class="td-muted text-xs">{{ oc.change_date.strftime('%Y/%m/%d') }}</td>
+              <td>
+                {% if oc.next_change_date %}
+                <div class="next-date-val">{{ oc.next_change_date.strftime('%d/%m/%Y') }}</div>
+                <div class="next-date-days">
+                  {% if days_left < 0 %}
+                  <span class="badge badge-danger no-dot">متأخر {{ days_left|abs }}ي</span>
+                  {% elif days_left == 0 %}
+                  <span class="badge badge-danger no-dot">اليوم</span>
+                  {% elif days_left <= 7 %}
+                  <span class="badge badge-warning no-dot">{{ days_left }} يوم</span>
+                  {% elif days_left <= 14 %}
+                  <span class="badge badge-muted no-dot">{{ days_left }} يوم</span>
+                  {% else %}
+                  <span class="text-xs text-muted">{{ days_left }} يوم</span>
+                  {% endif %}
+                </div>
+                {% else %}
+                <span class="td-muted text-xs">—</span>
+                {% endif %}
+              </td>
+              <td class="text-sm">
+                {% if oc.service_fee > 0 %}
+                <span class="text-signal fw-6">{{ "%.2f"|format(oc.service_fee) }}</span>
+                <span class="text-xs text-muted"> {{ currency }}</span>
+                {% else %}—{% endif %}
+              </td>
+              <td>
+                <div style="display:flex;gap:5px;align-items:center">
+                  <a href="{{ url_for('oil_change_detail', oid=oc.id) }}"
+                     class="btn btn-secondary btn-icon-sm" title="عرض">
+                    <svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:none;stroke:currentColor;stroke-linecap:round;stroke-width:2">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                      <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                  </a>
+                  {% if oc.customer_phone %}
+                  <a href="https://wa.me/{{ oc.customer_phone|replace(' ','')|replace('+','') }}"
+                     target="_blank" class="wa-btn" title="واتساب">
+                    <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>
+                  </a>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      {% if records.pages > 1 %}
+      <div class="pagination">
+        <a href="{{ url_for('oil_change_list', page=records.prev_num, q=search, filter=filter_, date_from=date_from, date_to=date_to) }}"
+           class="page-link {% if not records.has_prev %}disabled{% endif %}">
+          <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-linecap:round;stroke-width:2"><polyline points="9 18 15 12 9 6"/></svg>
+        </a>
+        {% for p in records.iter_pages(left_edge=1,right_edge=1,left_current=2,right_current=2) %}
+          {% if p %}
+          <a href="{{ url_for('oil_change_list', page=p, q=search, filter=filter_, date_from=date_from, date_to=date_to) }}"
+             class="page-link {% if p==records.page %}active{% endif %}">{{ p }}</a>
+          {% else %}
+          <span class="page-link disabled">…</span>
+          {% endif %}
+        {% endfor %}
+        <a href="{{ url_for('oil_change_list', page=records.next_num, q=search, filter=filter_, date_from=date_from, date_to=date_to) }}"
+           class="page-link {% if not records.has_next %}disabled{% endif %}">
+          <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-linecap:round;stroke-width:2"><polyline points="15 18 9 12 15 6"/></svg>
+        </a>
+        <span class="text-xs text-muted" style="margin-right:8px">
+          {{ records.total }} سجل · صفحة {{ records.page }} من {{ records.pages }}
+        </span>
+      </div>
+      {% endif %}
+
+      {% else %}
+      <div class="panel-body">
+        <div class="empty-state">
+          <svg viewBox="0 0 24 24"><path d="M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v3"/><rect x="9" y="11" width="14" height="10" rx="2"/></svg>
+          <div class="empty-state-title">لا توجد سجلات</div>
+          <div class="empty-state-sub">
+            {% if search or date_from or date_to %}جرّب تغيير الفلتر
+            {% else %}سجّل أول تغيير زيت الآن{% endif %}
+          </div>
+          {% if not search and not date_from %}
+          <a href="{{ url_for('oil_change_new') }}" class="btn btn-primary btn-sm">
+            <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            تغيير زيت جديد
+          </a>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+
+  <!-- RIGHT: alerts -->
+  <div style="display:flex;flex-direction:column;gap:14px">
+
+    {% if overdue %}
+    <div class="panel panel-overdue">
+      <div class="panel-header">
+        <span class="panel-title text-danger">متأخرون</span>
+        <span class="badge badge-danger no-dot" style="margin-right:4px">{{ overdue|length }}</span>
+      </div>
+      <div class="panel-body-flush">
+        {% for oc in overdue %}
+        {% set days_late = (today - oc.next_change_date).days %}
+        <div class="alert-row">
+          <div>
+            <div class="ar-name">{{ oc.customer_name }}</div>
+            <div class="ar-plate">
+              <span class="badge badge-instrument no-dot" style="font-size:.58rem">{{ oc.car_plate }}</span>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+            <span class="badge badge-danger">{{ days_late }}ي</span>
+            {% if oc.customer_phone %}
+            <a href="https://wa.me/{{ oc.customer_phone|replace(' ','')|replace('+','') }}"
+               target="_blank" class="wa-btn">
+              <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>
+            </a>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    {% if upcoming %}
+    <div class="panel panel-upcoming">
+      <div class="panel-header">
+        <span class="panel-title text-warning">قريباً (14 يوم)</span>
+        <span class="badge badge-warning no-dot" style="margin-right:4px">{{ upcoming|length }}</span>
+      </div>
+      <div class="panel-body-flush">
+        {% for oc in upcoming %}
+        {% set days_left = (oc.next_change_date - today).days %}
+        <div class="alert-row">
+          <div>
+            <div class="ar-name">{{ oc.customer_name }}</div>
+            <div class="ar-plate">
+              <span class="badge badge-instrument no-dot" style="font-size:.58rem">{{ oc.car_plate }}</span>
+              {% if oc.oil_type %}
+              <span class="text-xs text-muted"> · {{ oc.oil_type }}</span>
+              {% endif %}
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+            <div style="text-align:center">
+              <span class="badge {% if days_left==0 %}badge-danger{% else %}badge-warning{% endif %}">
+                {% if days_left==0 %}اليوم{% elif days_left==1 %}غداً{% else %}{{ days_left }}ي{% endif %}
+              </span>
+              <div class="text-xs text-muted mt-4">{{ oc.next_change_date.strftime('%d/%m') }}</div>
+            </div>
+            {% if oc.customer_phone %}
+            <a href="https://wa.me/{{ oc.customer_phone|replace(' ','')|replace('+','') }}"
+               target="_blank" class="wa-btn">
+              <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>
+            </a>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    {% if not overdue and not upcoming %}
+    <div class="panel">
+      <div class="panel-body">
+        <div class="empty-state" style="padding:28px 16px">
+          <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          <div class="empty-state-title" style="font-size:1rem">لا توجد تنبيهات</div>
+          <div class="empty-state-sub">جميع المواعيد على ما يرام</div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+  </div><!-- /right -->
+
+</div><!-- /layout -->
+{% endif %}
+
+{% endblock %}

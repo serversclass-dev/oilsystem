@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>404 — الصفحة غير موجودة</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet"/>
+
+  <style>
+    :root {
+      --asphalt:    #17191b;
+      --paper:      #f2f0ea;
+      --white:      #ffffff;
+      --signal:     #ff5c35;
+      --signal-dark:#dc3e19;
+      --instrument: #4478ff;
+      --steel:      #a8adb3;
+      --ink:        #17191b;
+      --muted:      #696e72;
+      --line-light: rgba(23,25,27,.13);
+      --line-dark:  rgba(255,255,255,.13);
+      --display: "Barlow Condensed", "Tajawal", sans-serif;
+      --arabic:  "Tajawal", sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      min-height: 100vh;
+      font-family: var(--arabic);
+      background: var(--paper);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      min-height: 100vh;
+    }
+
+    /* Left dark panel */
+    .dark-panel {
+      background:
+        radial-gradient(circle at 15% 85%, rgba(255,92,53,.15), transparent 40%),
+        radial-gradient(circle at 85% 20%, rgba(68,120,255,.1), transparent 40%),
+        var(--asphalt);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 60px 64px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .dark-panel::before {
+      content: "";
+      position: absolute;
+      bottom: -80px; left: -80px;
+      width: 400px; height: 400px;
+      border: 1px solid var(--line-dark);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    .err-code {
+      font-family: var(--display);
+      font-size: clamp(7rem, 14vw, 12rem);
+      font-weight: 800;
+      line-height: .85;
+      letter-spacing: -.05em;
+      color: var(--white);
+      position: relative;
+      z-index: 1;
+    }
+    .err-code span { color: var(--signal); }
+
+    .err-line {
+      width: 48px;
+      height: 3px;
+      background: var(--signal);
+      margin: 20px 0 16px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .err-title {
+      font-family: var(--display);
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--white);
+      letter-spacing: -.02em;
+      position: relative;
+      z-index: 1;
+    }
+    .err-sub {
+      font-size: .78rem;
+      color: var(--steel);
+      margin-top: 8px;
+      line-height: 1.7;
+      max-width: 320px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Right light panel */
+    .light-panel {
+      background: var(--paper);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 60px 64px;
+    }
+
+    /* Logo */
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      margin-bottom: 40px;
+    }
+    .logo-mark {
+      position: relative;
+      width: 34px; height: 34px;
+      background: var(--asphalt);
+      border-radius: 50%;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .logo-mark::before, .logo-mark::after {
+      position: absolute;
+      content: "";
+      background: var(--signal);
+    }
+    .logo-mark::before {
+      top: 15px; left: 5px;
+      width: 22px; height: 3px;
+      transform: rotate(-22deg);
+    }
+    .logo-mark::after {
+      top: 8px; left: 16px;
+      width: 3px; height: 18px;
+      transform: rotate(-22deg);
+    }
+    .logo-name {
+      font-family: var(--display);
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .nav-title {
+      font-family: var(--display);
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--ink);
+      margin-bottom: 20px;
+    }
+
+    .nav-links {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: 100%;
+      max-width: 320px;
+    }
+
+    .nav-link-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      background: var(--white);
+      border: 1px solid var(--line-light);
+      border-radius: 10px;
+      text-decoration: none;
+      color: var(--ink);
+      font-size: .78rem;
+      font-weight: 600;
+      transition: border-color .14s, box-shadow .14s, transform .12s;
+    }
+    .nav-link-item:hover {
+      border-color: rgba(23,25,27,.22);
+      box-shadow: 0 4px 16px rgba(23,25,27,.08);
+      transform: translateX(-2px);
+    }
+    .nav-link-icon {
+      width: 36px; height: 36px;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .nav-link-icon svg {
+      width: 18px; height: 18px;
+      fill: none; stroke: currentColor;
+      stroke-linecap: round; stroke-width: 1.8;
+    }
+    .nav-link-icon.signal  { background: rgba(255,92,53,.1);  color: var(--signal); }
+    .nav-link-icon.blue    { background: rgba(68,120,255,.1); color: var(--instrument); }
+    .nav-link-icon.success { background: rgba(22,131,95,.1);  color: #16835f; }
+
+    .nav-link-text { flex: 1; }
+    .nav-link-label { font-size: .78rem; font-weight: 600; color: var(--ink); }
+    .nav-link-desc  { font-size: .62rem; color: var(--muted); margin-top: 2px; }
+
+    .nav-link-arrow {
+      color: var(--muted);
+      font-size: .7rem;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      body { grid-template-columns: 1fr; }
+      .dark-panel {
+        padding: 48px 32px 40px;
+        min-height: 40vh;
+      }
+      .light-panel { padding: 40px 32px 48px; }
+      .logo { margin-bottom: 28px; }
+    }
+    @media (max-width: 480px) {
+      .dark-panel { padding: 36px 24px 32px; }
+      .light-panel { padding: 32px 24px 40px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Dark panel -->
+  <div class="dark-panel">
+    <div class="err-code"><span>4</span>0<span>4</span></div>
+    <div class="err-line"></div>
+    <div class="err-title">الصفحة غير موجودة</div>
+    <p class="err-sub">
+      الرابط الذي طلبته غير موجود أو تم نقله إلى مكان آخر.
+      تحقق من الرابط أو عُد للصفحة الرئيسية.
+    </p>
+  </div>
+
+  <!-- Light panel -->
+  <div class="light-panel">
+
+    <a href="/" class="logo">
+      <span class="logo-mark" aria-hidden="true"></span>
+      <span class="logo-name">RUN X</span>
+    </a>
+
+    <div class="nav-title">أين تريد الذهاب؟</div>
+
+    <div class="nav-links">
+
+      <a href="/" class="nav-link-item">
+        <div class="nav-link-icon signal">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+        </div>
+        <div class="nav-link-text">
+          <div class="nav-link-label">لوحة التحكم</div>
+          <div class="nav-link-desc">الصفحة الرئيسية للنظام</div>
+        </div>
+        <span class="nav-link-arrow">←</span>
+      </a>
+
+      <a href="/sales/new" class="nav-link-item">
+        <div class="nav-link-icon blue">
+          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+        </div>
+        <div class="nav-link-text">
+          <div class="nav-link-label">فاتورة جديدة</div>
+          <div class="nav-link-desc">تسجيل عملية بيع جديدة</div>
+        </div>
+        <span class="nav-link-arrow">←</span>
+      </a>
+
+      <a href="/oil-change/new" class="nav-link-item">
+        <div class="nav-link-icon success">
+          <svg viewBox="0 0 24 24"><path d="M20 9V7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v2"/><path d="M9 22V12h6v10"/><path d="M2 10h20v2a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4v-2z"/></svg>
+        </div>
+        <div class="nav-link-text">
+          <div class="nav-link-label">تغيير زيت جديد</div>
+          <div class="nav-link-desc">تسجيل تغيير زيت</div>
+        </div>
+        <span class="nav-link-arrow">←</span>
+      </a>
+
+    </div>
+
+  </div>
+
+</body>
+</html>
